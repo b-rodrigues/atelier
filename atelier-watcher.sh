@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 CMD_FILE="/tmp/atelier-cmd"
 SESSION_NAME="atelier"
-REPL_PANE="${SESSION_NAME}:0.1"
+REPL_PANE="${SESSION_NAME}:0.2"
 
 # Ensure the command file exists
 touch "$CMD_FILE"

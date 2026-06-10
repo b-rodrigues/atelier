@@ -22,6 +22,7 @@
             pkgs.python3
             pkgs.tmux
             pkgs.neovim
+            pkgs.nano
           ];
 
           installPhase = ''
@@ -36,7 +37,7 @@
             chmod +x $out/bin/atelier
 
             wrapProgram $out/bin/atelier \
-              --prefix PATH : "${pkgs.lib.makeBinPath [ pkgs.tmux pkgs.neovim pkgs.python3 ]}" \
+              --prefix PATH : "${pkgs.lib.makeBinPath [ pkgs.tmux pkgs.neovim pkgs.python3 pkgs.nano ]}" \
               --set ATELIER_DIR "$out/lib/atelier"
           '';
         };
@@ -50,6 +51,7 @@
             pkgs.tmux
             pkgs.neovim
             pkgs.python3
+            pkgs.nano
             atelier-pkg
           ];
 
