@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+ENV/
+env/
+
+# Editor / OS files
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local temporary/scratch files
+/scratch/
+*.log
+*.csv
+tmp/
+/tmp/
+
+# T Language environment caches
+.t_julia_depot/
+.t_python_guard/
+.t_r_profile/

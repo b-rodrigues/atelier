@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# Resolve absolute paths
+REPO_DIR="${REPO_DIR:-/home/brodrigues/Documents/repos/tlang}"
+ATELIER_DIR="${ATELIER_DIR:-/home/brodrigues/Documents/repos/atelier}"
+
+SESSION_NAME="atelier"
+
+# 1. Clean up old session if any
+tmux kill-session -t "$SESSION_NAME" 2>/dev/null
+
+# Clean up temp files
+rm -f /tmp/atelier-cmd
+rm -f /tmp/atelier-vars.csv
+
+# 2. Create a new tmux session and start Neovim in Pane 0 (top-left)
+# Load custom Neovim configuration that enables leader-key eval mapping
+# Run it inside the nix shell so Neovim has access to LSP, etc.
+tmux new-session -d -s "$SESSION_NAME" -n "Atelier" \
+  "nix develop $REPO_DIR --command nvim -u $ATELIER_DIR/atelier-init.lua"
+
+# 3. Create Pane 1: T REPL (top-right)
+# Split horizontally (split window into left and right)
+# Run T REPL via dune exec repl
+# Setting TLANG_REPO_ROOT ensures that the shellHook initializes startup scripts in the correct directory.
+tmux split-window -h -t "$SESSION_NAME:0.0" \
+  "export TLANG_REPO_ROOT=$REPO_DIR; nix develop $REPO_DIR --command dune exec --root $REPO_DIR -- src/repl.exe"
+
+# 4. Create Pane 2: Variables watcher (bottom-left)
+# Split Pane 0 vertically
+tmux split-window -v -t "$SESSION_NAME:0.0" \
+  "python3 $ATELIER_DIR/atelier-vars.py"
+
+# 5. Create Pane 3: Files pane (bottom-right)
+# Split Pane 1 vertically
+# Show header and enter interactive shell in ATELIER_DIR
+tmux split-window -v -t "$SESSION_NAME:0.1" \
+  "clear; echo -e '\033[1;34mAtelier Files Pane\033[0m'; echo -e '\033[38;5;242m──────────────────\033[0m'; ls -F --color=always; echo ''; exec \$SHELL"
+
+# 6. Start the watcher in the background
+# The watcher checks if the tmux session is still running and cleans up if not
+"$ATELIER_DIR/atelier-watcher.sh" &
+
+# 7. Attach to the tmux session
+tmux attach-session -t "$SESSION_NAME"
