@@ -136,7 +136,15 @@ fn cell_style(cell: &vt100::Cell) -> ratatui::style::Style {
         style = style.fg(fg);
     }
     if let Some(bg) = map_color(cell.bgcolor()) {
-        style = style.bg(bg);
+        let is_black = match bg {
+            ratatui::style::Color::Black => true,
+            ratatui::style::Color::Indexed(0) | ratatui::style::Color::Indexed(16) => true,
+            ratatui::style::Color::Rgb(0, 0, 0) => true,
+            _ => false,
+        };
+        if !is_black {
+            style = style.bg(bg);
+        }
     }
     if cell.bold() {
         style = style.add_modifier(ratatui::style::Modifier::BOLD);
