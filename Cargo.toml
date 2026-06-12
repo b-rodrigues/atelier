@@ -11,5 +11,4 @@ portable-pty = "0.8"
 vt100 = "0.15"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
-notify = "6"
 anyhow = "1"

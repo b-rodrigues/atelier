@@ -1,13 +1,11 @@
 use crate::pane::{Pane, PaneKind};
-use notify::{Config, Event, RecommendedWatcher, Watcher};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Wrap};
 use ratatui::Frame;
 use std::path::PathBuf;
-use std::sync::mpsc;
-use std::time::Duration;
+use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
 struct VarEntry {
@@ -20,39 +18,19 @@ pub struct VarsPane {
     entries: Vec<VarEntry>,
     scroll: usize,
     csv_path: PathBuf,
-    _watcher: RecommendedWatcher,
-    notify_rx: mpsc::Receiver<Result<Event, notify::Error>>,
+    last_modified: Option<SystemTime>,
 }
 
 impl VarsPane {
     pub fn new(csv_path: PathBuf) -> Self {
-        let (tx, rx) = mpsc::channel::<Result<Event, notify::Error>>();
-        let mut watcher = RecommendedWatcher::new(
-            move |res| {
-                let _ = tx.send(res);
-            },
-            Config::default(),
-        )
-        .unwrap();
-
-        if csv_path.exists() {
-            let _ = watcher.watch(&csv_path, notify::RecursiveMode::NonRecursive);
-        }
-        if let Some(parent) = csv_path.parent() {
-            if parent.exists() {
-                let _ = watcher.watch(parent, notify::RecursiveMode::NonRecursive);
-            }
-        }
-
-        let entries = Self::read_csv(&csv_path);
-
-        Self {
-            entries,
+        let mut pane = Self {
+            entries: Vec::new(),
             scroll: 0,
             csv_path,
-            _watcher: watcher,
-            notify_rx: rx,
-        }
+            last_modified: None,
+        };
+        pane.check_updates();
+        pane
     }
 
     fn read_csv(path: &PathBuf) -> Vec<VarEntry> {
@@ -81,15 +59,17 @@ impl VarsPane {
     }
 
     fn check_updates(&mut self) {
-        loop {
-            match self.notify_rx.recv_timeout(Duration::from_millis(0)) {
-                Ok(Ok(_)) => {
+        if let Ok(metadata) = std::fs::metadata(&self.csv_path) {
+            if let Ok(modified) = metadata.modified() {
+                if Some(modified) != self.last_modified {
                     self.entries = Self::read_csv(&self.csv_path);
+                    self.last_modified = Some(modified);
                 }
-                Ok(Err(_)) => break,
-                Err(mpsc::RecvTimeoutError::Timeout) | Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    break;
-                }
+            }
+        } else {
+            if !self.entries.is_empty() {
+                self.entries.clear();
+                self.last_modified = None;
             }
         }
     }
