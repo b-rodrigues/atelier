@@ -244,7 +244,7 @@ fn render_quit_overlay(f: &mut Frame, area: Rect) {
 }
 
 fn make_block(title: &str, focused: bool) -> Block<'static> {
-    let style = if focused {
+    let border_style = if focused {
         Style::default()
             .fg(Color::Green)
             .add_modifier(Modifier::BOLD)
@@ -252,10 +252,22 @@ fn make_block(title: &str, focused: bool) -> Block<'static> {
         Style::default().fg(Color::DarkGray)
     };
 
+    let title_span = if focused {
+        Span::styled(
+            format!(" {} ", title),
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+        )
+    } else {
+        Span::styled(
+            format!(" {} ", title),
+            Style::default().fg(Color::Gray),
+        )
+    };
+
     Block::default()
-        .title(format!(" {} ", title))
+        .title(title_span)
         .borders(Borders::ALL)
-        .border_style(style)
+        .border_style(border_style)
 }
 
 fn status_bar(app: &App) -> Paragraph<'static> {
