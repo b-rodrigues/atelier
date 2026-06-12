@@ -68,13 +68,13 @@ else
 fi
 
 tmux split-window -h -t "$SESSION_NAME:0.0" \
-  "export TLANG_REPO_ROOT=$REPO_DIR; nix develop $REPO_DIR --command bash -c '$REPL_CMD; bash; tmux kill-session -t $SESSION_NAME'"
+  "export TLANG_REPO_ROOT=$REPO_DIR; nix develop $REPO_DIR --command bash -c '$REPL_CMD; stty sane; bash; tmux kill-session -t $SESSION_NAME'"
 
-# 4. Create Pane 3: Files pane (bottom-right)
+# 4. Create Pane 3: Terminal pane (bottom-right)
 # Split Pane 1 vertically
 # Show header and enter interactive shell in ATELIER_DIR
 tmux split-window -v -t "$SESSION_NAME:0.1" \
-  "clear; echo -e '\033[1;34mAtelier Files Pane\033[0m'; echo -e '\033[38;5;242m──────────────────\033[0m'; ls -F --color=always; echo ''; exec \$SHELL"
+  "clear; echo -e '\033[1;34mTerminal\033[0m'; echo -e '\033[38;5;242m──────────────────\033[0m'; ls -F --color=always; echo ''; exec \$SHELL"
 
 # 5. Create Pane 2: Variables watcher (bottom-left)
 # Split Pane 0 vertically
