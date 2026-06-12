@@ -15,7 +15,7 @@ pub enum PaneKind {
 pub trait Pane {
     fn kind(&self) -> PaneKind;
     fn name(&self) -> &str;
-    fn render(&mut self, f: &mut Frame, area: Rect);
+    fn render(&mut self, f: &mut Frame, area: Rect, focused: bool);
     fn write_input(&mut self, bytes: &[u8]);
     fn resize(&mut self, _cols: u16, _rows: u16) {}
     fn kill(&mut self) {}
@@ -34,7 +34,7 @@ impl Pane for ErrorPane {
     fn name(&self) -> &str {
         &self.name
     }
-    fn render(&mut self, f: &mut Frame, area: Rect) {
+    fn render(&mut self, f: &mut Frame, area: Rect, _focused: bool) {
         let text = ratatui::widgets::Paragraph::new(vec![
             ratatui::text::Line::from(ratatui::text::Span::styled(
                 "Failed to spawn pane:",

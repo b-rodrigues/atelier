@@ -122,6 +122,37 @@ impl PtyPane {
     }
 }
 
+fn map_color(color: vt100::Color) -> Option<ratatui::style::Color> {
+    match color {
+        vt100::Color::Default => None,
+        vt100::Color::Idx(idx) => Some(ratatui::style::Color::Indexed(idx)),
+        vt100::Color::Rgb(r, g, b) => Some(ratatui::style::Color::Rgb(r, g, b)),
+    }
+}
+
+fn cell_style(cell: &vt100::Cell) -> ratatui::style::Style {
+    let mut style = ratatui::style::Style::default();
+    if let Some(fg) = map_color(cell.fgcolor()) {
+        style = style.fg(fg);
+    }
+    if let Some(bg) = map_color(cell.bgcolor()) {
+        style = style.bg(bg);
+    }
+    if cell.bold() {
+        style = style.add_modifier(ratatui::style::Modifier::BOLD);
+    }
+    if cell.italic() {
+        style = style.add_modifier(ratatui::style::Modifier::ITALIC);
+    }
+    if cell.underline() {
+        style = style.add_modifier(ratatui::style::Modifier::UNDERLINED);
+    }
+    if cell.inverse() {
+        style = style.add_modifier(ratatui::style::Modifier::REVERSED);
+    }
+    style
+}
+
 impl Pane for PtyPane {
     fn kind(&self) -> PaneKind {
         self.kind
@@ -131,7 +162,7 @@ impl Pane for PtyPane {
         &self.name
     }
 
-    fn render(&mut self, f: &mut Frame, area: Rect) {
+    fn render(&mut self, f: &mut Frame, area: Rect, focused: bool) {
         self.drain_output();
 
         if self.dead {
@@ -165,7 +196,9 @@ impl Pane for PtyPane {
             for c in 0..display_cols.min(screen_cols) {
                 match screen.cell(r, c) {
                     Some(cell) => {
-                        spans.push(Span::raw(cell.contents()));
+                        let contents = cell.contents();
+                        let style = cell_style(cell);
+                        spans.push(Span::styled(contents.to_string(), style));
                     }
                     None => {
                         spans.push(Span::raw(" "));
@@ -178,12 +211,14 @@ impl Pane for PtyPane {
         let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
         f.render_widget(paragraph, area);
 
-        let (cursor_row, cursor_col) = screen.cursor_position();
-        if cursor_row < display_rows && cursor_col < display_cols {
-            f.set_cursor_position((
-                area.x + cursor_col.min(display_cols - 1),
-                area.y + cursor_row.min(display_rows - 1),
-            ));
+        if focused {
+            let (cursor_row, cursor_col) = screen.cursor_position();
+            if cursor_row < display_rows && cursor_col < display_cols {
+                f.set_cursor_position((
+                    area.x + cursor_col.min(display_cols - 1),
+                    area.y + cursor_row.min(display_rows - 1),
+                ));
+            }
         }
     }
 

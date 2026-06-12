@@ -92,7 +92,7 @@ impl Pane for VarsPane {
         "Variables"
     }
 
-    fn render(&mut self, f: &mut Frame, area: Rect) {
+    fn render(&mut self, f: &mut Frame, area: Rect, _focused: bool) {
         self.check_updates();
 
         let rows = area.height as usize;

@@ -42,7 +42,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
             let inner = block.inner(area);
             pane.resize(inner.width, inner.height);
             f.render_widget(block, area);
-            pane.render(f, inner);
+            pane.render(f, inner, is_focused);
         } else {
             let placeholder = format!("Pane {} (not yet initialized)", idx + 1);
             let block = make_block(&placeholder, false);
