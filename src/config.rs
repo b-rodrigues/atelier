@@ -19,6 +19,38 @@ pub struct Config {
     pub editor: EditorConfig,
     pub repl: ReplConfig,
     pub keybindings: KeybindingsConfig,
+    #[serde(default)]
+    pub layout: LayoutConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LayoutConfig {
+    #[serde(default = "default_positions")]
+    pub positions: Vec<String>,
+    #[serde(default = "default_initial_maximized")]
+    pub initial_maximized: String,
+}
+
+impl Default for LayoutConfig {
+    fn default() -> Self {
+        Self {
+            positions: default_positions(),
+            initial_maximized: default_initial_maximized(),
+        }
+    }
+}
+
+fn default_positions() -> Vec<String> {
+    vec![
+        "editor".to_string(),
+        "repl".to_string(),
+        "variables".to_string(),
+        "terminal".to_string(),
+    ]
+}
+
+fn default_initial_maximized() -> String {
+    "none".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,6 +86,7 @@ impl Default for Config {
             keybindings: KeybindingsConfig {
                 leader: "ctrl-space".into(),
             },
+            layout: LayoutConfig::default(),
         }
     }
 }

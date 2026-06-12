@@ -22,13 +22,43 @@ pub fn render(f: &mut Frame, app: &mut App) {
     let main_area = main[0];
     let mut pane_areas = [Rect::default(); 4];
 
+    // Map physical positions to pane indices
+    use crate::pane::PaneKind;
+    let mut physical_to_pane_idx = [0usize; 4];
+    let mut kinds = vec![PaneKind::Editor, PaneKind::Repl, PaneKind::Variables, PaneKind::Terminal];
+    for (phys_pos, kind_str) in app.config.layout.positions.iter().enumerate() {
+        if phys_pos >= 4 { break; }
+        let kind = match kind_str.as_str() {
+            "editor" => PaneKind::Editor,
+            "repl" => PaneKind::Repl,
+            "variables" => PaneKind::Variables,
+            "terminal" => PaneKind::Terminal,
+            _ => continue,
+        };
+        kinds[phys_pos] = kind;
+    }
+    for (phys_pos, kind) in kinds.iter().enumerate() {
+        if let Some(idx) = app.panes.iter().position(|p| p.kind() == *kind) {
+            physical_to_pane_idx[phys_pos] = idx;
+        } else {
+            physical_to_pane_idx[phys_pos] = std::cmp::min(phys_pos, app.panes.len().saturating_sub(1));
+        }
+    }
+
+    let focused_physical_pos = physical_to_pane_idx
+        .iter()
+        .position(|&idx| idx == app.focus)
+        .unwrap_or(0);
+
+    let mut physical_areas = [Rect::default(); 4];
+
     match app.maximized {
         MaximizedState::Full => {
             for i in 0..4 {
-                if i == app.focus {
-                    pane_areas[i] = main_area;
+                if i == focused_physical_pos {
+                    physical_areas[i] = main_area;
                 } else {
-                    pane_areas[i] = Rect::default();
+                    physical_areas[i] = Rect::default();
                 }
             }
         }
@@ -38,34 +68,34 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(main_area);
             
-            if app.focus == 0 || app.focus == 2 {
-                if app.focus == 0 {
-                    pane_areas[0] = cols[0];
-                    pane_areas[2] = Rect::default();
+            if focused_physical_pos == 0 || focused_physical_pos == 2 {
+                if focused_physical_pos == 0 {
+                    physical_areas[0] = cols[0];
+                    physical_areas[2] = Rect::default();
                 } else {
-                    pane_areas[2] = cols[0];
-                    pane_areas[0] = Rect::default();
+                    physical_areas[2] = cols[0];
+                    physical_areas[0] = Rect::default();
                 }
                 let r_split = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(cols[1]);
-                pane_areas[1] = r_split[0];
-                pane_areas[3] = r_split[1];
+                physical_areas[1] = r_split[0];
+                physical_areas[3] = r_split[1];
             } else {
-                if app.focus == 1 {
-                    pane_areas[1] = cols[1];
-                    pane_areas[3] = Rect::default();
+                if focused_physical_pos == 1 {
+                    physical_areas[1] = cols[1];
+                    physical_areas[3] = Rect::default();
                 } else {
-                    pane_areas[3] = cols[1];
-                    pane_areas[1] = Rect::default();
+                    physical_areas[3] = cols[1];
+                    physical_areas[1] = Rect::default();
                 }
                 let l_split = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(cols[0]);
-                pane_areas[0] = l_split[0];
-                pane_areas[2] = l_split[1];
+                physical_areas[0] = l_split[0];
+                physical_areas[2] = l_split[1];
             }
         }
         MaximizedState::Horizontal => {
@@ -74,34 +104,34 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(main_area);
             
-            if app.focus == 0 || app.focus == 1 {
-                if app.focus == 0 {
-                    pane_areas[0] = rows[0];
-                    pane_areas[1] = Rect::default();
+            if focused_physical_pos == 0 || focused_physical_pos == 1 {
+                if focused_physical_pos == 0 {
+                    physical_areas[0] = rows[0];
+                    physical_areas[1] = Rect::default();
                 } else {
-                    pane_areas[1] = rows[0];
-                    pane_areas[0] = Rect::default();
+                    physical_areas[1] = rows[0];
+                    physical_areas[0] = Rect::default();
                 }
                 let b_split = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(rows[1]);
-                pane_areas[2] = b_split[0];
-                pane_areas[3] = b_split[1];
+                physical_areas[2] = b_split[0];
+                physical_areas[3] = b_split[1];
             } else {
-                if app.focus == 2 {
-                    pane_areas[2] = rows[1];
-                    pane_areas[3] = Rect::default();
+                if focused_physical_pos == 2 {
+                    physical_areas[2] = rows[1];
+                    physical_areas[3] = Rect::default();
                 } else {
-                    pane_areas[3] = rows[1];
-                    pane_areas[2] = Rect::default();
+                    physical_areas[3] = rows[1];
+                    physical_areas[2] = Rect::default();
                 }
                 let t_split = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(rows[0]);
-                pane_areas[0] = t_split[0];
-                pane_areas[1] = t_split[1];
+                physical_areas[0] = t_split[0];
+                physical_areas[1] = t_split[1];
             }
         }
         MaximizedState::None => {
@@ -120,11 +150,16 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(cols[1]);
             
-            pane_areas[0] = l_split[0];
-            pane_areas[1] = r_split[0];
-            pane_areas[2] = l_split[1];
-            pane_areas[3] = r_split[1];
+            physical_areas[0] = l_split[0];
+            physical_areas[1] = r_split[0];
+            physical_areas[2] = l_split[1];
+            physical_areas[3] = r_split[1];
         }
+    }
+
+    for phys_pos in 0..4 {
+        let pane_idx = physical_to_pane_idx[phys_pos];
+        pane_areas[pane_idx] = physical_areas[phys_pos];
     }
 
     let pane_indices = [0usize, 1, 2, 3];

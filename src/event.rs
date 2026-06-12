@@ -197,10 +197,26 @@ fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<Action> {
 
 fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
     match key.code {
-        KeyCode::Char('1') => app.focus_pane(PaneKind::Editor),
-        KeyCode::Char('2') => app.focus_pane(PaneKind::Repl),
-        KeyCode::Char('3') => app.focus_pane(PaneKind::Variables),
-        KeyCode::Char('4') => app.focus_pane(PaneKind::Terminal),
+        KeyCode::Char('1') => {
+            if let Some(idx) = app.pane_index_at_physical_pos(0) {
+                app.focus = idx;
+            }
+        }
+        KeyCode::Char('2') => {
+            if let Some(idx) = app.pane_index_at_physical_pos(1) {
+                app.focus = idx;
+            }
+        }
+        KeyCode::Char('3') => {
+            if let Some(idx) = app.pane_index_at_physical_pos(2) {
+                app.focus = idx;
+            }
+        }
+        KeyCode::Char('4') => {
+            if let Some(idx) = app.pane_index_at_physical_pos(3) {
+                app.focus = idx;
+            }
+        }
         KeyCode::Char('q') => {
             app.overlay = Some(Overlay::QuitConfirm);
             app.mode = InputMode::Normal;

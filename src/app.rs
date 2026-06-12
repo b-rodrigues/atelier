@@ -41,13 +41,19 @@ pub struct App {
 impl App {
     pub fn new(config: Config, repo_path: Option<String>) -> Self {
         let base = repo_path.unwrap_or_else(|| ".".to_string());
+        let initial_maximized = match config.layout.initial_maximized.as_str() {
+            "full" => MaximizedState::Full,
+            "vertical" => MaximizedState::Vertical,
+            "horizontal" => MaximizedState::Horizontal,
+            _ => MaximizedState::None,
+        };
         Self {
             config,
             panes: Vec::new(),
             focus: 0,
             mode: InputMode::Normal,
             overlay: None,
-            maximized: MaximizedState::None,
+            maximized: initial_maximized,
             buffer_input: String::new(),
             should_quit: false,
             filetree_base: base.clone(),
@@ -58,14 +64,6 @@ impl App {
         }
     }
 
-    pub fn focus_pane(&mut self, kind: PaneKind) {
-        for (i, pane) in self.panes.iter().enumerate() {
-            if pane.kind() == kind {
-                self.focus = i;
-                return;
-            }
-        }
-    }
 
     pub fn focused_pane_mut(&mut self) -> Option<&mut Box<dyn Pane>> {
         self.panes.get_mut(self.focus)
@@ -183,6 +181,21 @@ fn clean_editor_line(line: &str) -> String {
                 return;
             }
         }
+    }
+
+    pub fn pane_index_at_physical_pos(&self, pos: usize) -> Option<usize> {
+        if pos >= self.config.layout.positions.len() {
+            return None;
+        }
+        let kind_str = &self.config.layout.positions[pos];
+        let kind = match kind_str.as_str() {
+            "editor" => PaneKind::Editor,
+            "repl" => PaneKind::Repl,
+            "variables" => PaneKind::Variables,
+            "terminal" => PaneKind::Terminal,
+            _ => return None,
+        };
+        self.panes.iter().position(|p| p.kind() == kind)
     }
 }
 
