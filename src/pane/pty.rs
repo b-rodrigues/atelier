@@ -48,7 +48,6 @@ impl PtyPane {
             for arg in args {
                 c.arg(arg);
             }
-            c.env("ATELIER_ACTIVE", "1");
             c.env("TLANG_REPO_ROOT", path);
             c.env("REPO_DIR", path);
             c
@@ -59,6 +58,7 @@ impl PtyPane {
             }
             c
         };
+        cmd.env("ATELIER_ACTIVE", "1");
         if let Ok(cwd) = std::env::current_dir() {
             cmd.cwd(cwd);
         }
