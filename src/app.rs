@@ -108,8 +108,57 @@ impl App {
         }
     }
 
+fn clean_editor_line(line: &str) -> String {
+    let trimmed = line.trim_end();
+    
+    // 1. If there is a vertical separator in the first 12 characters, strip up to it.
+    if let Some(bar_idx) = trimmed.chars().take(12).position(|c| c == '│' || c == '|' || c == '┃' || c == '▕') {
+        let suffix: String = trimmed.chars().skip(bar_idx + 1).collect();
+        return suffix.trim_start().to_string();
+    }
+    
+    // 2. Otherwise, check if the line starts with optional spaces, followed by digits, followed by a space.
+    let chars: Vec<char> = trimmed.chars().collect();
+    let mut i = 0;
+    while i < chars.len() && chars[i] == ' ' {
+        i += 1;
+    }
+    let digit_start = i;
+    while i < chars.len() && chars[i].is_ascii_digit() {
+        i += 1;
+    }
+    if i > digit_start && i < chars.len() && chars[i] == ' ' {
+        let mut j = i;
+        while j < chars.len() && chars[j] == ' ' {
+            j += 1;
+        }
+        if j < chars.len() {
+            let next_c = chars[j];
+            if next_c != '+' && next_c != '-' && next_c != '*' && next_c != '/' && next_c != '=' && next_c != '%' && next_c != '^' {
+                return chars[j..].iter().collect();
+            }
+        }
+    }
+    
+    trimmed.to_string()
+}
+
     pub fn send_to_repl(&mut self) {
-        let line = read_clipboard().unwrap_or_default();
+        let mut line_to_send = None;
+        if let Some(pane) = self.panes.get(self.focus) {
+            if let Some(line) = pane.get_cursor_line() {
+                let cleaned = Self::clean_editor_line(&line);
+                if !cleaned.is_empty() {
+                    line_to_send = Some(cleaned);
+                }
+            }
+        }
+
+        let line = match line_to_send {
+            Some(l) => l,
+            None => read_clipboard().unwrap_or_default(),
+        };
+
         if line.is_empty() {
             return;
         }

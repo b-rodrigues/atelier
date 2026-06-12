@@ -100,15 +100,7 @@ impl Pane for VarsPane {
 
         let mut lines: Vec<Line> = Vec::new();
 
-        if self.entries.is_empty() {
-            let text = Paragraph::new(Line::from(Span::styled(
-                "No user variables defined yet.",
-                Style::default().fg(Color::DarkGray),
-            )))
-            .wrap(Wrap { trim: false });
-            f.render_widget(text, area);
-            return;
-        }
+
 
         let name_col = (cols as f32 * 0.25) as usize;
         let type_col = (cols as f32 * 0.2) as usize;

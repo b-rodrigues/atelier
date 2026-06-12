@@ -246,4 +246,21 @@ impl Pane for PtyPane {
     fn kill(&mut self) {
         self.master.take();
     }
+
+    fn get_cursor_line(&self) -> Option<String> {
+        let screen = self.parser.screen();
+        let (cursor_row, _) = screen.cursor_position();
+        let screen_size = screen.size();
+        let cols = screen_size.1;
+
+        let mut line = String::new();
+        for c in 0..cols {
+            if let Some(cell) = screen.cell(cursor_row, c) {
+                line.push_str(&cell.contents());
+            } else {
+                line.push(' ');
+            }
+        }
+        Some(line)
+    }
 }

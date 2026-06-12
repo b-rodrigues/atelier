@@ -140,6 +140,8 @@ fn cleanup_temp_files() {
 }
 
 fn main() -> Result<()> {
+    cleanup_temp_files();
+
     let config = match Config::load()? {
         Some(c) => c,
         None => first_launch_prompt()?,

@@ -19,6 +19,9 @@ pub trait Pane {
     fn write_input(&mut self, bytes: &[u8]);
     fn resize(&mut self, _cols: u16, _rows: u16) {}
     fn kill(&mut self) {}
+    fn get_cursor_line(&self) -> Option<String> {
+        None
+    }
 }
 
 pub struct ErrorPane {
