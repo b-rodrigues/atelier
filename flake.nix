@@ -19,6 +19,11 @@
           cargoLock.lockFile = ./Cargo.lock;
 
           nativeBuildInputs = [ pkgs.makeWrapper ];
+
+          postInstall = ''
+            wrapProgram $out/bin/atelier \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.neovim pkgs.nano ]}
+          '';
         };
       in
       {
