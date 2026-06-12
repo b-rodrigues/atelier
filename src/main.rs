@@ -156,8 +156,14 @@ fn main() -> Result<()> {
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or(&app.config.editor.command);
-    if editor_args.is_empty() && (cmd_name == "nvim" || cmd_name == "vim" || cmd_name == "vi") {
-        editor_args = vec!["--cmd".to_string(), "set shortmess+=I".to_string()];
+    if cmd_name == "nvim" || cmd_name == "vim" || cmd_name == "vi" {
+        if editor_args.is_empty() {
+            editor_args = vec!["--cmd".to_string(), "set shortmess+=I".to_string()];
+        }
+        editor_args.push("--cmd".to_string());
+        editor_args.push("autocmd ColorScheme * highlight Normal ctermbg=NONE guibg=NONE | highlight NormalNC ctermbg=NONE guibg=NONE | highlight NonText ctermbg=NONE guibg=NONE | highlight SignColumn ctermbg=NONE guibg=NONE | highlight LineNr ctermbg=NONE guibg=NONE | highlight EndOfBuffer ctermbg=NONE guibg=NONE".to_string());
+        editor_args.push("--cmd".to_string());
+        editor_args.push("highlight Normal ctermbg=NONE guibg=NONE | highlight NormalNC ctermbg=NONE guibg=NONE | highlight NonText ctermbg=NONE guibg=NONE | highlight SignColumn ctermbg=NONE guibg=NONE | highlight LineNr ctermbg=NONE guibg=NONE | highlight EndOfBuffer ctermbg=NONE guibg=NONE".to_string());
     }
 
     let editor = PtyPane::spawn(
