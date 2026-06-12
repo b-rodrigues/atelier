@@ -20,6 +20,11 @@ fn first_launch_prompt() -> Result<Config> {
     let mut stdout = stdout();
     execute!(stdout, LeaveAlternateScreen)?;
     terminal::disable_raw_mode()?;
+    execute!(
+        stdout,
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::All),
+        crossterm::cursor::MoveTo(0, 0)
+    )?;
 
     println!();
     println!("  No config found at ~/.config/atelier/config.toml");
@@ -36,18 +41,18 @@ fn first_launch_prompt() -> Result<Config> {
     std::io::stdin().read_line(&mut input)?;
     let choice = input.trim();
 
-    let editor = match choice {
-        "1" | "nvim" => "nvim".to_string(),
-        "2" | "vim" => "vim".to_string(),
-        "3" | "nano" => "nano".to_string(),
-        "4" | "vi" => "vi".to_string(),
-        _ => "nvim".to_string(),
+    let (editor, args) = match choice {
+        "1" | "nvim" => ("nvim".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
+        "2" | "vim" => ("vim".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
+        "3" | "nano" => ("nano".to_string(), vec![]),
+        "4" | "vi" => ("vi".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
+        _ => ("nvim".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
     };
 
     let config = Config {
         editor: config::EditorConfig {
             command: editor,
-            args: vec![],
+            args,
         },
         ..Default::default()
     };
@@ -103,11 +108,20 @@ fn main() -> Result<()> {
 
     let mut app = App::new(config, repo_path.clone());
 
+    let mut editor_args = app.config.editor.args.clone();
+    let cmd_name = std::path::Path::new(&app.config.editor.command)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&app.config.editor.command);
+    if editor_args.is_empty() && (cmd_name == "nvim" || cmd_name == "vim" || cmd_name == "vi") {
+        editor_args = vec!["--cmd".to_string(), "set shortmess+=I".to_string()];
+    }
+
     let editor = PtyPane::spawn(
         PaneKind::Editor,
         app.config.editor.command.clone(),
         &app.config.editor.command,
-        &app.config.editor.args,
+        &editor_args,
         repo_path.as_deref(),
     );
 
@@ -130,15 +144,30 @@ fn main() -> Result<()> {
         repo_path.as_deref(),
     );
 
-    if let Ok(pane) = editor {
-        app.panes.push(Box::new(pane));
+    match editor {
+        Ok(pane) => app.panes.push(Box::new(pane)),
+        Err(e) => app.panes.push(Box::new(pane::ErrorPane {
+            kind: PaneKind::Editor,
+            name: app.config.editor.command.clone(),
+            error: e.to_string(),
+        })),
     }
-    if let Ok(pane) = repl {
-        app.panes.push(Box::new(pane));
+    match repl {
+        Ok(pane) => app.panes.push(Box::new(pane)),
+        Err(e) => app.panes.push(Box::new(pane::ErrorPane {
+            kind: PaneKind::Repl,
+            name: "T REPL".into(),
+            error: e.to_string(),
+        })),
     }
     app.panes.push(Box::new(vars));
-    if let Ok(pane) = terminal_pty {
-        app.panes.push(Box::new(pane));
+    match terminal_pty {
+        Ok(pane) => app.panes.push(Box::new(pane)),
+        Err(e) => app.panes.push(Box::new(pane::ErrorPane {
+            kind: PaneKind::Terminal,
+            name: "Terminal".into(),
+            error: e.to_string(),
+        })),
     }
 
     run(app)

@@ -45,7 +45,7 @@ impl Default for Config {
         Self {
             editor: EditorConfig {
                 command: "nvim".into(),
-                args: vec![],
+                args: vec!["--cmd".into(), "set shortmess+=I".into()],
             },
             repl: ReplConfig {
                 command: "t".into(),

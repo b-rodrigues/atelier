@@ -29,10 +29,10 @@ pub fn render(f: &mut Frame, app: &mut App) {
         .split(panes[1]);
 
     let pane_areas = [
-        (0usize, left_panes[0]),
-        (1, left_panes[1]),
-        (2, right_panes[0]),
-        (3, right_panes[1]),
+        (0usize, left_panes[0]), // Top-Left: Editor
+        (1, right_panes[0]),    // Top-Right: REPL
+        (2, left_panes[1]),     // Bottom-Left: Variables
+        (3, right_panes[1]),    // Bottom-Right: Terminal
     ];
 
     for (idx, area) in pane_areas {
@@ -40,6 +40,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
             let is_focused = idx == app.focus;
             let block = make_block(pane.name(), is_focused);
             let inner = block.inner(area);
+            pane.resize(inner.width, inner.height);
             f.render_widget(block, area);
             pane.render(f, inner);
         } else {
@@ -174,10 +175,11 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
     let rect = centered_rect(area, 50, 70);
     f.render_widget(Clear, rect);
 
+    let alt_key = if cfg!(target_os = "macos") { "Option" } else { "Alt" };
     let help_text = vec![
         Line::from(Span::styled(" Keybindings", Style::default().add_modifier(Modifier::BOLD))),
         Line::from(""),
-        Line::from(" Alt-Space   Enter navigation mode"),
+        Line::from(format!(" {}-Space   Enter navigation mode", alt_key)),
         Line::from(" Ctrl-d      Quit (saves files)"),
         Line::from(""),
         Line::from(Span::styled(" Navigation Mode:", Style::default().add_modifier(Modifier::BOLD))),
@@ -279,7 +281,7 @@ fn status_bar(app: &App) -> Paragraph<'static> {
         Color::Green
     };
 
-    let text = Line::from(vec![
+    let mut spans = vec![
         Span::styled(
             format!(" {} ", mode_str),
             Style::default()
@@ -287,8 +289,59 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 .bg(bg)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw(format!(" {} ", pane_name)),
-    ]);
+        Span::raw(format!(" {}  │ ", pane_name)),
+    ];
 
+    if let Some(overlay) = app.overlay {
+        match overlay {
+            Overlay::FileTree => {
+                spans.push(Span::styled("▲▼", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Navigate  "));
+                spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Open  "));
+                spans.push(Span::styled("Esc/q", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Close"));
+            }
+            Overlay::BufferList | Overlay::Help => {
+                spans.push(Span::styled("Esc/q/Space", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Close"));
+            }
+            Overlay::QuitConfirm => {
+                spans.push(Span::raw("Really quit?  "));
+                spans.push(Span::styled("y", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)));
+                spans.push(Span::raw(" Yes  "));
+                spans.push(Span::styled("n/Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+                spans.push(Span::raw(" No"));
+            }
+        }
+    } else {
+        match app.mode {
+            InputMode::Normal => {
+                let alt_key = if cfg!(target_os = "macos") { "Option" } else { "Alt" };
+                spans.push(Span::styled(format!("{}-Space", alt_key), Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Nav Mode  "));
+                spans.push(Span::styled("Ctrl-d", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Save & Quit  "));
+                spans.push(Span::styled("Ctrl-c", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Interrupt"));
+            }
+            InputMode::Navigation => {
+                spans.push(Span::styled("1-4", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Focus  "));
+                spans.push(Span::styled("f", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" File Tree  "));
+                spans.push(Span::styled("e", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Send REPL  "));
+                spans.push(Span::styled("?", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Help  "));
+                spans.push(Span::styled("Esc", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Normal  "));
+                spans.push(Span::styled("q", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Quit"));
+            }
+        }
+    }
+
+    let text = Line::from(spans);
     Paragraph::new(text).wrap(Wrap { trim: false })
 }

@@ -18,6 +18,7 @@ pub struct PtyPane {
     master: Option<Box<dyn MasterPty + Send>>,
     cols: u16,
     rows: u16,
+    dead: bool,
 }
 
 impl PtyPane {
@@ -98,17 +99,24 @@ impl PtyPane {
             master: Some(pair.master),
             cols: init_cols,
             rows: init_rows,
+            dead: false,
         })
     }
 
     fn drain_output(&mut self) {
+        if self.dead {
+            return;
+        }
         loop {
             match self.reader.try_recv() {
                 Ok(data) => {
                     self.parser.process(&data);
                 }
                 Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => break,
+                Err(TryRecvError::Disconnected) => {
+                    self.dead = true;
+                    break;
+                }
             }
         }
     }
@@ -125,6 +133,23 @@ impl Pane for PtyPane {
 
     fn render(&mut self, f: &mut Frame, area: Rect) {
         self.drain_output();
+
+        if self.dead {
+            let text = Paragraph::new(vec![
+                Line::from(Span::styled(
+                    "Process exited / failed to start",
+                    ratatui::style::Style::default()
+                        .fg(ratatui::style::Color::Red)
+                        .add_modifier(ratatui::style::Modifier::BOLD),
+                )),
+                Line::from(""),
+                Line::from("The command exited or could not be found."),
+                Line::from(format!("Command: {}", self.name)),
+            ])
+            .wrap(Wrap { trim: true });
+            f.render_widget(text, area);
+            return;
+        }
 
         let screen = self.parser.screen();
         let screen_size = screen.size();
