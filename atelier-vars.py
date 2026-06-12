@@ -11,11 +11,11 @@ RESET = "\033[0m"
 BOLD = "\033[1m"
 HEADER_COLOR = "\033[1;36m"  # Cyan Bold
 BORDER_COLOR = "\033[38;5;242m"  # Dark Grey
-NAME_COLOR = "\033[1;37m"  # White Bold
+NAME_COLOR = "\033[1m"  # Bold default foreground
 TYPE_COLOR = "\033[33m"  # Yellow
 VAL_COLOR_INT = "\033[32m"  # Green
 VAL_COLOR_STR = "\033[35m"  # Magenta
-VAL_COLOR_DEFAULT = "\033[37m"  # White
+VAL_COLOR_DEFAULT = "\033[0m"  # Default reset/foreground
 
 def clear_screen():
     sys.stdout.write("\033[H\033[2J")
