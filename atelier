@@ -74,7 +74,7 @@ tmux split-window -h -t "$SESSION_NAME:0.0" \
 # Split Pane 1 vertically
 # Show header and enter interactive shell in ATELIER_DIR
 tmux split-window -v -t "$SESSION_NAME:0.1" \
-  "clear; echo -e '\033[1;34mTerminal\033[0m'; echo -e '\033[38;5;242m──────────────────\033[0m'; ls -F --color=always; echo ''; exec \$SHELL"
+  "clear; echo -e '\033[1;34mTerminal\033[0m'; echo -e '\033[38;5;242m──────────────────\033[0m'; ls -F --color=always; echo ''; exec \$SHELL -o vi"
 
 # 5. Create Pane 2: Variables watcher (bottom-left)
 # Split Pane 0 vertically
@@ -83,15 +83,29 @@ tmux split-window -v -t "$SESSION_NAME:0.0" \
 
 # 6. Customize status bar to display commands at the bottom (like nano/vim/nvim)
 if [ "$EDITOR_CHOICE" = "nano" ] || [ "$EDITOR_CHOICE" = "vim" ] || [ "$EDITOR_CHOICE" = "vi" ]; then
-  STATUS_RIGHT="#[fg=colour249,bg=colour235] [$(echo "$EDITOR_CHOICE" | tr 'a-z' 'A-Z') Editor]  │  Ctrl+b + Arrows: Navigate  │  Ctrl-d (2x): Exit  "
+  STATUS_RIGHT="#[fg=colour249,bg=colour235] [$(echo "$EDITOR_CHOICE" | tr 'a-z' 'A-Z') Editor]  │  Alt+h/j/k/l: Nav  │  Ctrl-d (2x): Exit  "
 else
-  STATUS_RIGHT="#[fg=colour249,bg=colour235] Space+e/Ctrl+Enter: Eval  │  Ctrl+b + Arrows: Navigate  │  Ctrl-d (2x): Exit  "
+  STATUS_RIGHT="#[fg=colour249,bg=colour235] Space+e: Eval │ Space+f: Files │ Space+b: Buffers │ Space+q+q: Exit │ Alt+h/j/k/l: Nav "
 fi
 
 tmux set-option -t "$SESSION_NAME" status-style "bg=colour235,fg=colour245"
 tmux set-option -t "$SESSION_NAME" status-left "#[fg=colour117,bg=colour235,bold]  Atelier TUI  "
 tmux set-option -t "$SESSION_NAME" status-right "$STATUS_RIGHT"
 tmux set-option -t "$SESSION_NAME" status-right-length 120
+
+# 6.5. Enable Vi keys and global Alt-h/j/k/l navigation in tmux
+tmux set-window-option -t "$SESSION_NAME" mode-keys vi
+tmux set-option -t "$SESSION_NAME" status-keys vi
+
+tmux bind-key -n M-h select-pane -L
+tmux bind-key -n M-j select-pane -D
+tmux bind-key -n M-k select-pane -U
+tmux bind-key -n M-l select-pane -R
+
+tmux bind-key -n M-Left select-pane -L
+tmux bind-key -n M-Down select-pane -D
+tmux bind-key -n M-Up select-pane -U
+tmux bind-key -n M-Right select-pane -R
 
 # 7. Start the watcher in the background
 # The watcher checks if the tmux session is still running and cleans up if not

@@ -45,3 +45,4 @@ vim.keymap.set('n', '<leader>2', ':silent !tmux select-pane -t 1<CR>', { silent 
 vim.keymap.set('n', '<leader>3', ':silent !tmux select-pane -t 2<CR>', { silent = true })
 vim.keymap.set('n', '<leader>4', ':silent !tmux select-pane -t 3<CR>', { silent = true })
 vim.keymap.set('n', '<leader>f', ':Explore<CR>', { silent = true })
+vim.keymap.set('n', '<leader>b', ':buffers<CR>:buffer ', { silent = false })
