@@ -241,29 +241,49 @@ fn render_filetree_overlay(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn render_bufferlist_overlay(f: &mut Frame, area: Rect) {
-    let rect = centered_rect(area, 40, 30);
+    let rect = centered_rect(area, 60, 40);
     f.render_widget(Clear, rect);
 
-    let text = vec![
+    let mut text = vec![
         Line::from(Span::styled(
-            " Buffer list sent to nvim (:ls)",
-            Style::default().add_modifier(Modifier::BOLD),
+            " Open Buffers in Editor ",
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from(" Use :b<number> to switch buffers"),
-        Line::from(" Press Esc/q to close"),
     ];
+
+    if let Ok(content) = std::fs::read_to_string("/tmp/atelier-buffers.txt") {
+        let lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
+        if lines.is_empty() {
+            text.push(Line::from("  No open buffers or editor not loaded."));
+        } else {
+            for line in lines {
+                text.push(Line::from(format!("  {}", line)));
+            }
+        }
+    } else {
+        text.push(Line::from("  Querying editor buffers..."));
+    }
+
+    text.push(Line::from(""));
+    text.push(Line::from(Span::styled(
+        " Use :b<number> in Editor to switch",
+        Style::default().fg(Color::DarkGray),
+    )));
+    text.push(Line::from(Span::styled(
+        " Press Esc/q to close overlay",
+        Style::default().fg(Color::DarkGray),
+    )));
 
     let paragraph = Paragraph::new(text)
         .block(
             Block::default()
-                .title(" Buffers ")
+                .title(" Buffer List ")
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Magenta))
                 .style(Style::default().bg(Color::Black)),
         )
-        .style(Style::default().fg(Color::White))
-        .alignment(ratatui::layout::Alignment::Center);
+        .style(Style::default().fg(Color::White));
 
     f.render_widget(paragraph, rect);
 }

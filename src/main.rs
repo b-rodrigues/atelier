@@ -137,6 +137,7 @@ fn run(mut app: App) -> Result<()> {
 fn cleanup_temp_files() {
     let _ = std::fs::remove_file("/tmp/atelier-vars.csv");
     let _ = std::fs::remove_file("/tmp/atelier-cmd");
+    let _ = std::fs::remove_file("/tmp/atelier-buffers.txt");
 }
 
 fn main() -> Result<()> {

@@ -191,6 +191,11 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
         }
         KeyCode::Char('b') => {
             app.overlay = Some(Overlay::BufferList);
+            for pane in app.panes.iter_mut() {
+                if pane.kind() == PaneKind::Editor {
+                    pane.write_input(b"\x1b\x1b:redir! > /tmp/atelier-buffers.txt | silent ls | redir END\r");
+                }
+            }
         }
         KeyCode::Char('?') => {
             app.overlay = Some(Overlay::Help);
