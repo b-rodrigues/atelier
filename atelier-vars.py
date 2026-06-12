@@ -21,16 +21,21 @@ def clear_screen():
     sys.stdout.write("\033[H\033[2J")
     sys.stdout.flush()
 
-def format_value(val, var_type):
+def get_display_val(val, var_type):
     # Truncate value if it's too long
     if len(val) > 40:
         val = val[:37] + "..."
+    if var_type == "String":
+        return f'"{val}"'
+    return val
+
+def get_color_for_type(var_type):
     if var_type in ("Int", "Float"):
-        return f"{VAL_COLOR_INT}{val}{RESET}"
+        return VAL_COLOR_INT
     elif var_type == "String":
-        return f"{VAL_COLOR_STR}\"{val}\"{RESET}"
+        return VAL_COLOR_STR
     else:
-        return f"{VAL_COLOR_DEFAULT}{val}{RESET}"
+        return VAL_COLOR_DEFAULT
 
 def draw_table(rows):
     if not rows:
@@ -41,12 +46,23 @@ def draw_table(rows):
         print(" to see variables here.")
         return
 
+    rows_display = []
+    for r in rows:
+        disp_val = get_display_val(r["value"], r["type"])
+        rows_display.append({
+            "name": r["name"],
+            "type": r["type"],
+            "display_val": disp_val,
+            "color": get_color_for_type(r["type"])
+        })
+
     # Calculate column widths
     col_widths = {
-        "name": max(len(r["name"]) for r in rows),
-        "type": max(len(r["type"]) for r in rows),
-        "value": max(len(r["value"]) for r in rows)
+        "name": max(len(r["name"]) for r in rows_display),
+        "type": max(len(r["type"]) for r in rows_display),
+        "value": max(len(r["display_val"]) for r in rows_display)
     }
+    
     # Ensure minimum widths for headers
     col_widths["name"] = max(col_widths["name"], 4)
     col_widths["type"] = max(col_widths["type"], 4)
@@ -67,13 +83,13 @@ def draw_table(rows):
     print(f"{bc}├{'─' * (col_widths['name']+2)}┼{'─' * (col_widths['type']+2)}┼{'─' * (col_widths['value']+2)}┤{rst}")
     
     # Rows
-    for r in rows:
+    for r in rows_display:
         name_cell = f"{NAME_COLOR}{r['name']}{rst}".ljust(col_widths['name'] + len(NAME_COLOR) + len(rst))
         type_cell = f"{TYPE_COLOR}{r['type']}{rst}".ljust(col_widths['type'] + len(TYPE_COLOR) + len(rst))
         
         # Color value depending on type
-        v_formatted = format_value(r['value'], r['type'])
-        val_cell = v_formatted + " " * (col_widths['value'] - len(r['value']))
+        v_formatted = f"{r['color']}{r['display_val']}{rst}"
+        val_cell = v_formatted + " " * (col_widths['value'] - len(r['display_val']))
         
         print(f"{bc}│{rst} {name_cell} {bc}│{rst} {type_cell} {bc}│{rst} {val_cell} {bc}│{rst}")
 
@@ -109,7 +125,8 @@ def main():
                     clear_screen()
                     draw_table([])
         except Exception as e:
-            pass
+            clear_screen()
+            print(f"Error in variable watcher: {e}")
         time.sleep(0.1)
 
 if __name__ == "__main__":

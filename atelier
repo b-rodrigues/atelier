@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Resolve absolute paths
-REPO_DIR="${REPO_DIR:-/home/brodrigues/Documents/repos/tlang}"
-ATELIER_DIR="${ATELIER_DIR:-/home/brodrigues/Documents/repos/atelier}"
+# Resolve absolute paths dynamically
+ATELIER_DIR="${ATELIER_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+REPO_DIR="${REPO_DIR:-$PWD}"
 
 SESSION_NAME="atelier"
 
@@ -13,15 +13,35 @@ tmux kill-session -t "$SESSION_NAME" 2>/dev/null
 rm -f /tmp/atelier-cmd
 rm -f /tmp/atelier-vars.csv
 
-# 2. Parse configuration file ~/.config/ateliers/settings.toml
-CONFIG_FILE="$HOME/.config/ateliers/settings.toml"
+# 2. Parse configuration file ~/.config/atelier/settings.toml (preferred) or ~/.config/ateliers/settings.toml (fallback)
+CONFIG_FILE="$HOME/.config/atelier/settings.toml"
+OLD_CONFIG_FILE="$HOME/.config/ateliers/settings.toml"
+
+# Detect which editor is available as default
 DEFAULT_EDITOR="nvim"
+if ! command -v nvim >/dev/null 2>&1; then
+  if command -v nano >/dev/null 2>&1; then
+    DEFAULT_EDITOR="nano"
+  elif command -v vim >/dev/null 2>&1; then
+    DEFAULT_EDITOR="vim"
+  else
+    DEFAULT_EDITOR="vi"
+  fi
+fi
+
 EDITOR_CHOICE="$DEFAULT_EDITOR"
 
+ACTIVE_CONFIG=""
 if [ -f "$CONFIG_FILE" ]; then
+  ACTIVE_CONFIG="$CONFIG_FILE"
+elif [ -f "$OLD_CONFIG_FILE" ]; then
+  ACTIVE_CONFIG="$OLD_CONFIG_FILE"
+fi
+
+if [ -n "$ACTIVE_CONFIG" ]; then
   # Simple grep/sed extraction of the "editor" field
-  EXTRACTED_EDITOR=$(grep -E '^\s*editor\s*=' "$CONFIG_FILE" | cut -d'=' -f2 | tr -d '"'\'' ')
-  if [ "$EXTRACTED_EDITOR" = "nano" ] || [ "$EXTRACTED_EDITOR" = "nvim" ]; then
+  EXTRACTED_EDITOR=$(grep -E '^\s*editor\s*=' "$ACTIVE_CONFIG" | cut -d'=' -f2 | tr -d '"'\'' ')
+  if [ "$EXTRACTED_EDITOR" = "nano" ] || [ "$EXTRACTED_EDITOR" = "nvim" ] || [ "$EXTRACTED_EDITOR" = "vim" ] || [ "$EXTRACTED_EDITOR" = "vi" ]; then
     EDITOR_CHOICE="$EXTRACTED_EDITOR"
   fi
 fi
@@ -29,6 +49,8 @@ fi
 # Set the editor command line based on choice
 if [ "$EDITOR_CHOICE" = "nano" ]; then
   EDITOR_CMD="nix develop $REPO_DIR --command nano"
+elif [ "$EDITOR_CHOICE" = "vim" ] || [ "$EDITOR_CHOICE" = "vi" ]; then
+  EDITOR_CMD="nix develop $REPO_DIR --command $EDITOR_CHOICE"
 else
   EDITOR_CMD="nix develop $REPO_DIR --command nvim -u $ATELIER_DIR/atelier-init.lua"
 fi
@@ -39,8 +61,14 @@ tmux new-session -d -s "$SESSION_NAME" -n "Atelier" "$EDITOR_CMD"
 # 3. Create Pane 1: T REPL (top-right)
 # Split horizontally (split window into left and right)
 # Run T REPL. Exiting REPL (1st Ctrl-D) drops to shell, exiting shell (2nd Ctrl-D) kills the session.
+if [ -f "$REPO_DIR/dune-project" ] && [ -d "$REPO_DIR/src" ]; then
+  REPL_CMD="dune exec --root $REPO_DIR -- src/repl.exe"
+else
+  REPL_CMD="t repl"
+fi
+
 tmux split-window -h -t "$SESSION_NAME:0.0" \
-  "export TLANG_REPO_ROOT=$REPO_DIR; nix develop $REPO_DIR --command bash -c 'dune exec --root $REPO_DIR -- src/repl.exe; bash; tmux kill-session -t $SESSION_NAME'"
+  "export TLANG_REPO_ROOT=$REPO_DIR; nix develop $REPO_DIR --command bash -c '$REPL_CMD; bash; tmux kill-session -t $SESSION_NAME'"
 
 # 4. Create Pane 3: Files pane (bottom-right)
 # Split Pane 1 vertically
@@ -51,11 +79,11 @@ tmux split-window -v -t "$SESSION_NAME:0.1" \
 # 5. Create Pane 2: Variables watcher (bottom-left)
 # Split Pane 0 vertically
 tmux split-window -v -t "$SESSION_NAME:0.0" \
-  "python3 $ATELIER_DIR/atelier-vars.py"
+  "nix develop $REPO_DIR --command python3 $ATELIER_DIR/atelier-vars.py"
 
-# 6. Customize status bar to display commands at the bottom (like nano)
-if [ "$EDITOR_CHOICE" = "nano" ]; then
-  STATUS_RIGHT="#[fg=colour249,bg=colour235] [Nano Editor]  │  Ctrl+b + Arrows: Navigate  │  Ctrl-d (2x): Exit  "
+# 6. Customize status bar to display commands at the bottom (like nano/vim/nvim)
+if [ "$EDITOR_CHOICE" = "nano" ] || [ "$EDITOR_CHOICE" = "vim" ] || [ "$EDITOR_CHOICE" = "vi" ]; then
+  STATUS_RIGHT="#[fg=colour249,bg=colour235] [$(echo "$EDITOR_CHOICE" | tr 'a-z' 'A-Z') Editor]  │  Ctrl+b + Arrows: Navigate  │  Ctrl-d (2x): Exit  "
 else
   STATUS_RIGHT="#[fg=colour249,bg=colour235] Space+e/Ctrl+Enter: Eval  │  Ctrl+b + Arrows: Navigate  │  Ctrl-d (2x): Exit  "
 fi
