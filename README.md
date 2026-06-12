@@ -1,8 +1,10 @@
 # Atelier TUI
 
-Atelier is a `tmux`-based Terminal User Interface (TUI) and interactive development environment for the **T programming language**. 
+Atelier is a **Rust**-based Terminal User Interface (TUI) and interactive
+development environment for the **T programming language**.
 
-It provides an out-of-the-box IDE layout combining your editor, REPL, environment state, and terminal in a single unified workspace.
+It provides an out-of-the-box IDE layout combining your editor, REPL,
+environment state, and terminal in a single unified workspace.
 
 ## Layout
 
@@ -11,70 +13,87 @@ Atelier splits your terminal window into four dedicated, responsive panes:
 ```
 ┌─────────────────────────────────┬─────────────────────────────────┐
 │                                 │                                 │
-│   nvim (Editor)                 │   T REPL                        │
-│   Top-Left [Pane 0]             │   Top-Right [Pane 2]            │
+│   Editor (nvim)                 │   T REPL                        │
+│   Top-Left                      │   Top-Right                     │
 │                                 │                                 │
 ├─────────────────────────────────┼─────────────────────────────────┤
 │                                 │                                 │
-│   Variables Viewer              │   File Browser / Terminal       │
-│   Bottom-Left [Pane 1]          │   Bottom-Right [Pane 3]         │
+│   Variables Viewer              │   Terminal                      │
+│   Bottom-Left                   │   Bottom-Right                  │
 │                                 │                                 │
 └─────────────────────────────────┴─────────────────────────────────┘
 ```
 
-- **Top-Left [Pane 0] (nvim)**: The editor pane pre-configured with interactive evaluation mappings.
-- **Bottom-Left [Pane 1] (Variables)**: A live environment inspector displaying user-defined variables, their types, and formatted previews.
-- **Top-Right [Pane 2] (T REPL)**: The active interactive T language shell.
-- **Bottom-Right [Pane 3] (Terminal)**: A general-purpose shell initialized in the project directory for browsing files and executing shell commands.
+- **Editor** (top-left): Your editor (nvim by default) spawned in a PTY.
+- **Variables** (bottom-left): Live CSV-based environment inspector.
+- **T REPL** (top-right): Interactive T language shell in a PTY.
+- **Terminal** (bottom-right): General-purpose shell in a PTY.
 
 ## Key Mappings
 
-### Code Evaluation
-When writing code in the Neovim editor pane, you can send code directly to the REPL:
-- **Normal Mode**: Press `<leader>e` (Space + e) or `Ctrl+Enter` to evaluate the current line.
-- **Visual Mode**: Press `<leader>e` (Space + e) or `Ctrl+Enter` to evaluate the selected text block.
+| Mode    | Key           | Action                         |
+|---------|---------------|--------------------------------|
+| Normal  | `Ctrl-Space`  | Enter navigation mode          |
+| Normal  | `Ctrl-d`      | Quit (with confirmation)       |
+| Normal  | Keys          | Forwarded to focused PTY pane  |
+| Nav     | `1`-`4`       | Focus pane 1–4                 |
+| Nav     | `f`           | Open file tree browser         |
+| Nav     | `e`           | Send clipboard to REPL         |
+| Nav     | `?`           | Show keybinding help           |
+| Nav     | `Esc`         | Return to normal mode          |
+| Nav     | `q`           | Quit (with confirmation)       |
+| FileTree| `Up`/`Down`   | Navigate entries               |
+| FileTree| `Enter`       | Open file / enter directory    |
+| FileTree| `Esc`/`q`     | Close file tree                |
 
-### Exiting the TUI
-To cleanly shut down the entire Atelier session:
-1. Select the **T REPL** pane (`Ctrl-b`, then arrow keys).
-2. Press **`Ctrl-d`** once to exit the active T REPL session.
-3. Press **`Ctrl-d`** a second time to exit the shell, which automatically kills the tmux session and closes all other panes.
+### Code Evaluation
+
+Copy a line or selection in the editor (e.g. `yy` in nvim, or visual `y`),
+then press `Ctrl-Space e` to send clipboard contents to the T REPL.
 
 ## How to Run
 
-Atelier is packaged and integrated directly into the `tlang` developer environment. 
+```bash
+nix run github:b-rodrigues/atelier
+```
 
-1. Navigate to the `tlang` repository:
-   ```bash
-   cd /home/brodrigues/Documents/repos/tlang
-   ```
-2. Enter the development shell:
-   ```bash
-   nix develop
-   ```
-3. Run the launcher:
-   ```bash
-   atelier
-   ```
+Or in a development shell:
+
+```bash
+nix develop
+atelier
+```
+
+On first launch, Atelier prompts you to choose an editor (nvim/vim/nano/vi)
+and creates `~/.config/atelier/config.toml`.
 
 ## Configuration
 
-You can configure the active editor inside `~/.config/ateliers/settings.toml`. 
+Configuration is stored in `~/.config/atelier/config.toml`:
 
-Example:
 ```toml
-editor = "nano" # Options: "nvim" (default) or "nano"
-```
+[editor]
+command = "nvim"
+args = []
 
-- **`nvim`**: Spawns Neovim with full code evaluation keybindings.
-- **`nano`**: Spawns Nano. The TUI status bar dynamically hides Neovim evaluation helpers when Nano is active.
+[repl]
+command = "t"
+args = ["repl"]
+
+[keybindings]
+leader = "ctrl-space"
+```
 
 ## Repository Structure
 
-- `atelier`: The TUI launcher script (manages tmux window splits and process lifecycles).
-- `atelier-watcher.sh`: Background watcher process piping code from Neovim to the T REPL and updating the environment inspector.
-- `atelier-vars.py`: Python script formatting and displaying active variables with ANSI colors and Unicode borders.
-- `atelier-init.lua`: Neovim configuration loading your default editor preferences and overlaying evaluation keymaps.
+- `src/main.rs`          — Entry point, first-launch prompt, pane setup
+- `src/config.rs`        — Config read/write (TOML)
+- `src/app.rs`           — Application state
+- `src/event.rs`         — Crossterm event loop
+- `src/ui.rs`            — Ratatui layout and widgets
+- `src/pane/mod.rs`      — Pane trait and enum
+- `src/pane/pty.rs`      — PTY-backed pane (portable-pty + vt100)
+- `src/pane/vars.rs`     — Variables pane (CSV watcher + Table)
 
 ## License
 

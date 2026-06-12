@@ -11,57 +11,44 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        atelier-pkg = pkgs.stdenv.mkDerivation {
+        atelier-pkg = pkgs.rustPlatform.buildRustPackage {
           pname = "atelier";
           version = "0.1.0";
           src = ./.;
 
+          cargoLock.lockFile = ./Cargo.lock;
+
           nativeBuildInputs = [ pkgs.makeWrapper ];
-
-          buildInputs = [
-            pkgs.python3
-            pkgs.tmux
-            pkgs.neovim
-            pkgs.nano
-          ];
-
-          installPhase = ''
-            mkdir -p $out/bin $out/lib/atelier
-            cp atelier-vars.py $out/lib/atelier/
-            cp atelier-watcher.sh $out/lib/atelier/
-            cp atelier-init.lua $out/lib/atelier/
-            chmod +x $out/lib/atelier/atelier-vars.py
-            chmod +x $out/lib/atelier/atelier-watcher.sh
-
-            cp atelier $out/bin/atelier
-            chmod +x $out/bin/atelier
-
-            wrapProgram $out/bin/atelier \
-              --prefix PATH : "${pkgs.lib.makeBinPath [ pkgs.tmux pkgs.neovim pkgs.python3 pkgs.nano ]}" \
-              --set ATELIER_DIR "$out/lib/atelier"
-          '';
         };
       in
       {
         packages.default = atelier-pkg;
         packages.atelier = atelier-pkg;
 
+        apps.default = {
+          type = "app";
+          program = "${atelier-pkg}/bin/atelier";
+        };
+
         devShells.default = pkgs.mkShell {
-          buildInputs = [
-            pkgs.tmux
-            pkgs.neovim
-            pkgs.python3
-            pkgs.nano
+          buildInputs = with pkgs; [
+            rustc
+            cargo
+            gcc
+            neovim
+            nano
             atelier-pkg
           ];
 
           shellHook = ''
             echo "═══════════════════════════════════════════════"
-            echo "Atelier TUI Development Environment"
+            echo "Atelier TUI Development Environment (Rust)"
             echo "═══════════════════════════════════════════════"
             echo ""
             echo "Available commands:"
             echo "  atelier              - Launch the Atelier TUI"
+            echo "  cargo build          - Build the Rust binary"
+            echo "  cargo run            - Run during development"
             echo ""
           '';
         };

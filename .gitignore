@@ -27,3 +27,9 @@ tmp/
 .t_julia_depot/
 .t_python_guard/
 .t_r_profile/
+
+
+# Added by cargo
+
+/target
+/result
