@@ -16,7 +16,33 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io::{stdout, Write};
 
+fn command_exists(cmd: &str) -> bool {
+    std::process::Command::new(cmd)
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .is_ok()
+}
+
 fn first_launch_prompt() -> Result<Config> {
+    let nvim_ok = command_exists("nvim");
+    let vim_ok = command_exists("vim");
+    let nano_ok = command_exists("nano");
+    let vi_ok = command_exists("vi");
+
+    let default_choice = if nvim_ok {
+        "1"
+    } else if nano_ok {
+        "3"
+    } else if vim_ok {
+        "2"
+    } else if vi_ok {
+        "4"
+    } else {
+        "1"
+    };
+
     let mut stdout = stdout();
     execute!(stdout, LeaveAlternateScreen)?;
     terminal::disable_raw_mode()?;
@@ -30,23 +56,38 @@ fn first_launch_prompt() -> Result<Config> {
     println!("  No config found at ~/.config/atelier/config.toml");
     println!();
     println!("  Choose your editor:");
-    println!("    [1] nvim    (recommended)");
-    println!("    [2] vim");
-    println!("    [3] nano");
-    println!("    [4] vi");
+    println!(
+        "    [1] nvim    {}",
+        if nvim_ok {
+            "(recommended)"
+        } else {
+            "(not found)"
+        }
+    );
+    println!("    [2] vim     {}", if vim_ok { "" } else { "(not found)" });
+    println!("    [3] nano    {}", if nano_ok { "" } else { "(not found)" });
+    println!("    [4] vi      {}", if vi_ok { "" } else { "(not found)" });
     print!("  > ");
     stdout.flush()?;
 
     let mut input = String::new();
     std::io::stdin().read_line(&mut input)?;
-    let choice = input.trim();
+    let mut choice = input.trim();
+    if choice.is_empty() {
+        choice = default_choice;
+    }
 
     let (editor, args) = match choice {
         "1" | "nvim" => ("nvim".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
         "2" | "vim" => ("vim".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
         "3" | "nano" => ("nano".to_string(), vec![]),
         "4" | "vi" => ("vi".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
-        _ => ("nvim".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
+        _ => match default_choice {
+            "2" => ("vim".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
+            "3" => ("nano".to_string(), vec![]),
+            "4" => ("vi".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
+            _ => ("nvim".to_string(), vec!["--cmd".to_string(), "set shortmess+=I".to_string()]),
+        },
     };
 
     let config = Config {
