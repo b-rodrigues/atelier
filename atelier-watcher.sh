@@ -30,10 +30,6 @@ while true; do
         tmux load-buffer -b atelier_buf "$CMD_FILE" 2>/dev/null
         tmux paste-buffer -b atelier_buf -t "$REPL_PANE"
         tmux send-keys -t "$REPL_PANE" Enter
-        
-        # Immediately queue the variable update
-        sleep 0.15
-        tmux send-keys -t "$REPL_PANE" "tui_update()" Enter
       fi
     fi
   fi
