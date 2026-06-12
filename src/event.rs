@@ -43,8 +43,30 @@ fn handle_overlay_key(app: &mut App, key: KeyEvent) -> Result<Action> {
         Some(Overlay::FileTree) => handle_filetree_key(app, key),
         Some(Overlay::BufferList) => {
             match key.code {
-                KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char(' ') => {
+                KeyCode::Esc | KeyCode::Char('q') => {
                     app.overlay = None;
+                }
+                KeyCode::Char(' ') => {
+                    if app.buffer_input.is_empty() {
+                        app.overlay = None;
+                    }
+                }
+                KeyCode::Char(c) if c.is_ascii_digit() => {
+                    app.buffer_input.push(c);
+                }
+                KeyCode::Backspace => {
+                    app.buffer_input.pop();
+                }
+                KeyCode::Enter => {
+                    if !app.buffer_input.is_empty() {
+                        let cmd = format!("\x1b\x1b:b {}\r", app.buffer_input);
+                        for pane in app.panes.iter_mut() {
+                            if pane.kind() == PaneKind::Editor {
+                                pane.write_input(cmd.as_bytes());
+                            }
+                        }
+                        app.overlay = None;
+                    }
                 }
                 _ => {}
             }
@@ -191,6 +213,7 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
         }
         KeyCode::Char('b') => {
             app.overlay = Some(Overlay::BufferList);
+            app.buffer_input = String::new();
             for pane in app.panes.iter_mut() {
                 if pane.kind() == PaneKind::Editor {
                     pane.write_input(b"\x1b\x1b:redir! > /tmp/atelier-buffers.txt | silent ls | redir END\r");

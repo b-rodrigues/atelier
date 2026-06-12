@@ -158,7 +158,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
 fn render_overlay(f: &mut Frame, area: Rect, overlay: Overlay, app: &App) {
     match overlay {
         Overlay::FileTree => render_filetree_overlay(f, area, app),
-        Overlay::BufferList => render_bufferlist_overlay(f, area),
+        Overlay::BufferList => render_bufferlist_overlay(f, area, app),
         Overlay::Help => render_help_overlay(f, area),
         Overlay::QuitConfirm => render_quit_overlay(f, area),
     }
@@ -240,7 +240,7 @@ fn render_filetree_overlay(f: &mut Frame, area: Rect, app: &App) {
     f.render_widget(list, rect);
 }
 
-fn render_bufferlist_overlay(f: &mut Frame, area: Rect) {
+fn render_bufferlist_overlay(f: &mut Frame, area: Rect, app: &App) {
     let rect = centered_rect(area, 60, 40);
     f.render_widget(Clear, rect);
 
@@ -266,10 +266,20 @@ fn render_bufferlist_overlay(f: &mut Frame, area: Rect) {
     }
 
     text.push(Line::from(""));
-    text.push(Line::from(Span::styled(
-        " Use :b<number> in Editor to switch",
-        Style::default().fg(Color::DarkGray),
-    )));
+    if app.buffer_input.is_empty() {
+        text.push(Line::from(Span::styled(
+            "  Type buffer number and press Enter to switch",
+            Style::default().fg(Color::Yellow),
+        )));
+    } else {
+        text.push(Line::from(vec![
+            Span::raw("  Switch to buffer: "),
+            Span::styled(&app.buffer_input, Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::raw(" (Press Enter)"),
+        ]));
+    }
+
+    text.push(Line::from(""));
     text.push(Line::from(Span::styled(
         " Press Esc/q to close overlay",
         Style::default().fg(Color::DarkGray),
