@@ -177,7 +177,7 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
     let help_text = vec![
         Line::from(Span::styled(" Keybindings", Style::default().add_modifier(Modifier::BOLD))),
         Line::from(""),
-        Line::from(" Ctrl-Space  Enter navigation mode"),
+        Line::from(" Alt-Space   Enter navigation mode"),
         Line::from(" Ctrl-d      Quit (saves files)"),
         Line::from(""),
         Line::from(Span::styled(" Navigation Mode:", Style::default().add_modifier(Modifier::BOLD))),

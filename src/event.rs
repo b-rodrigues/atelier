@@ -149,7 +149,7 @@ fn refresh_filetree(app: &mut App) {
 
 fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<Action> {
     match (key.code, key.modifiers) {
-        (KeyCode::Char(' '), KeyModifiers::CONTROL) => {
+        (KeyCode::Char(' '), KeyModifiers::ALT) => {
             app.mode = InputMode::Navigation;
             Ok(Action::None)
         }
