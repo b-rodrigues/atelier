@@ -1,4 +1,4 @@
-use crate::app::{App, InputMode, Overlay};
+use crate::app::{App, InputMode, Overlay, MaximizedState};
 use crate::pane::PaneKind;
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
@@ -197,6 +197,30 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
         }
         KeyCode::Char('e') => {
             app.send_to_repl();
+        }
+        KeyCode::Char('m') => {
+            app.maximized = if app.maximized == MaximizedState::Full {
+                MaximizedState::None
+            } else {
+                MaximizedState::Full
+            };
+        }
+        KeyCode::Char('v') => {
+            app.maximized = if app.maximized == MaximizedState::Vertical {
+                MaximizedState::None
+            } else {
+                MaximizedState::Vertical
+            };
+        }
+        KeyCode::Char('h') => {
+            app.maximized = if app.maximized == MaximizedState::Horizontal {
+                MaximizedState::None
+            } else {
+                MaximizedState::Horizontal
+            };
+        }
+        KeyCode::Char('=') => {
+            app.maximized = MaximizedState::None;
         }
         KeyCode::Esc => {}
         _ => {

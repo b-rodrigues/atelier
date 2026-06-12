@@ -1,4 +1,4 @@
-use crate::app::{App, InputMode, Overlay};
+use crate::app::{App, InputMode, Overlay, MaximizedState};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -13,29 +13,120 @@ pub fn render(f: &mut Frame, app: &mut App) {
         .constraints([Constraint::Min(1), Constraint::Length(1)])
         .split(area);
 
-    let panes = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(main[0]);
+    let main_area = main[0];
+    let mut pane_areas = [Rect::default(); 4];
 
-    let left_panes = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(panes[0]);
+    match app.maximized {
+        MaximizedState::Full => {
+            for i in 0..4 {
+                if i == app.focus {
+                    pane_areas[i] = main_area;
+                } else {
+                    pane_areas[i] = Rect::default();
+                }
+            }
+        }
+        MaximizedState::Vertical => {
+            let cols = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(main_area);
+            
+            if app.focus == 0 || app.focus == 2 {
+                if app.focus == 0 {
+                    pane_areas[0] = cols[0];
+                    pane_areas[2] = Rect::default();
+                } else {
+                    pane_areas[2] = cols[0];
+                    pane_areas[0] = Rect::default();
+                }
+                let r_split = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(cols[1]);
+                pane_areas[1] = r_split[0];
+                pane_areas[3] = r_split[1];
+            } else {
+                if app.focus == 1 {
+                    pane_areas[1] = cols[1];
+                    pane_areas[3] = Rect::default();
+                } else {
+                    pane_areas[3] = cols[1];
+                    pane_areas[1] = Rect::default();
+                }
+                let l_split = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(cols[0]);
+                pane_areas[0] = l_split[0];
+                pane_areas[2] = l_split[1];
+            }
+        }
+        MaximizedState::Horizontal => {
+            let rows = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(main_area);
+            
+            if app.focus == 0 || app.focus == 1 {
+                if app.focus == 0 {
+                    pane_areas[0] = rows[0];
+                    pane_areas[1] = Rect::default();
+                } else {
+                    pane_areas[1] = rows[0];
+                    pane_areas[0] = Rect::default();
+                }
+                let b_split = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(rows[1]);
+                pane_areas[2] = b_split[0];
+                pane_areas[3] = b_split[1];
+            } else {
+                if app.focus == 2 {
+                    pane_areas[2] = rows[1];
+                    pane_areas[3] = Rect::default();
+                } else {
+                    pane_areas[3] = rows[1];
+                    pane_areas[2] = Rect::default();
+                }
+                let t_split = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(rows[0]);
+                pane_areas[0] = t_split[0];
+                pane_areas[1] = t_split[1];
+            }
+        }
+        MaximizedState::None => {
+            let cols = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(main_area);
+            
+            let l_split = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(cols[0]);
+            
+            let r_split = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(cols[1]);
+            
+            pane_areas[0] = l_split[0];
+            pane_areas[1] = r_split[0];
+            pane_areas[2] = l_split[1];
+            pane_areas[3] = r_split[1];
+        }
+    }
 
-    let right_panes = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(panes[1]);
-
-    let pane_areas = [
-        (0usize, left_panes[0]), // Top-Left: Editor
-        (1, right_panes[0]),    // Top-Right: REPL
-        (2, left_panes[1]),     // Bottom-Left: Variables
-        (3, right_panes[1]),    // Bottom-Right: Terminal
-    ];
-
-    for (idx, area) in pane_areas {
+    let pane_indices = [0usize, 1, 2, 3];
+    for idx in pane_indices {
+        let area = pane_areas[idx];
+        if area.width == 0 || area.height == 0 {
+            continue;
+        }
         if let Some(pane) = app.panes.get_mut(idx) {
             let is_focused = idx == app.focus;
             let block = make_block(pane.name(), is_focused);
@@ -187,6 +278,10 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         Line::from(" f           File tree browser"),
         Line::from(" b           Buffer list hint"),
         Line::from(" e           Send clipboard to REPL"),
+        Line::from(" m           Maximize/restore focused pane fully"),
+        Line::from(" v           Maximize/restore focused pane vertically"),
+        Line::from(" h           Maximize/restore focused pane horizontally"),
+        Line::from(" =           Restore all pane sizes"),
         Line::from(" ?           Show this help"),
         Line::from(" Esc         Back to normal mode"),
         Line::from(" q           Quit"),
@@ -344,6 +439,8 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 spans.push(Span::raw(" File Tree  "));
                 spans.push(Span::styled("e", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(" Send REPL  "));
+                spans.push(Span::styled("m/v/h/=", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Max/Restore  "));
                 spans.push(Span::styled("?", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(" Help  "));
                 spans.push(Span::styled("Esc", Style::default().fg(Color::Yellow)));

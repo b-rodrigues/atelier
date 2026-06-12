@@ -14,12 +14,21 @@ pub enum Overlay {
     QuitConfirm,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MaximizedState {
+    None,
+    Full,
+    Vertical,
+    Horizontal,
+}
+
 pub struct App {
     pub config: Config,
     pub panes: Vec<Box<dyn Pane>>,
     pub focus: usize,
     pub mode: InputMode,
     pub overlay: Option<Overlay>,
+    pub maximized: MaximizedState,
     pub should_quit: bool,
     pub filetree_base: String,
     pub filetree_current: String,
@@ -37,6 +46,7 @@ impl App {
             focus: 0,
             mode: InputMode::Normal,
             overlay: None,
+            maximized: MaximizedState::None,
             should_quit: false,
             filetree_base: base.clone(),
             filetree_current: base,
