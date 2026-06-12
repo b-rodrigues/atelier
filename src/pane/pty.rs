@@ -179,7 +179,7 @@ impl Pane for PtyPane {
                     pixel_height: 0,
                 });
             }
-            self.parser = vt100::Parser::new(rows, cols, 0);
+            self.parser.set_size(rows, cols);
         }
     }
 

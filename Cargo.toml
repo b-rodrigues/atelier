@@ -2,7 +2,7 @@
 name = "atelier"
 version = "0.1.0"
 edition = "2021"
-description = "A tmux-based TUI IDE for the T programming language"
+description = "A native Ratatui-based TUI IDE for the T programming language"
 
 [dependencies]
 ratatui = "0.29"

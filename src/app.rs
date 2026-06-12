@@ -22,6 +22,7 @@ pub struct App {
     pub overlay: Option<Overlay>,
     pub should_quit: bool,
     pub filetree_base: String,
+    pub filetree_current: String,
     pub filetree_scroll: usize,
     pub filetree_entries: Vec<(String, bool)>,
     pub filetree_selection: usize,
@@ -29,6 +30,7 @@ pub struct App {
 
 impl App {
     pub fn new(config: Config, repo_path: Option<String>) -> Self {
+        let base = repo_path.unwrap_or_else(|| ".".to_string());
         Self {
             config,
             panes: Vec::new(),
@@ -36,7 +38,8 @@ impl App {
             mode: InputMode::Normal,
             overlay: None,
             should_quit: false,
-            filetree_base: repo_path.unwrap_or_else(|| ".".to_string()),
+            filetree_base: base.clone(),
+            filetree_current: base,
             filetree_scroll: 0,
             filetree_entries: Vec::new(),
             filetree_selection: 0,
@@ -61,7 +64,14 @@ impl App {
     }
 
     pub fn open_in_editor(&mut self, path: &str) {
-        let msg = format!("\x1b:e {}\r", path);
+        let is_nano = self.config.editor.command.contains("nano");
+        let msg = if is_nano {
+            // nano: Alt-F to toggle new buffer, Ctrl-R to insert/open file, path, Enter
+            format!("\x1bF\x12{}\r", path)
+        } else {
+            // vim/nvim: Esc Esc :e path Enter
+            format!("\x1b\x1b:e {}\r", path)
+        };
         for (i, pane) in self.panes.iter().enumerate() {
             if pane.kind() == PaneKind::Editor {
                 if let Some(editor) = self.panes.get_mut(i) {
@@ -74,10 +84,17 @@ impl App {
     }
 
     pub fn save_all_and_quit(&mut self) {
+        let is_nano = self.config.editor.command.contains("nano");
         for (i, pane) in self.panes.iter().enumerate() {
             if pane.kind() == PaneKind::Editor {
                 if let Some(editor) = self.panes.get_mut(i) {
-                    editor.write_input(b"\x1b:wqa\r");
+                    if is_nano {
+                        // nano: Ctrl-O (write-out), Enter, Ctrl-X (exit)
+                        editor.write_input(b"\x0f\r\x18");
+                    } else {
+                        // vim: Esc Esc :wa Enter
+                        editor.write_input(b"\x1b\x1b:wa\r");
+                    }
                 }
                 break;
             }

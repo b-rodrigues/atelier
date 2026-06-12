@@ -78,27 +78,31 @@ fn handle_overlay_key(app: &mut App, key: KeyEvent) -> Result<Action> {
 
 fn handle_filetree_key(app: &mut App, key: KeyEvent) -> Result<Action> {
     match key.code {
-        KeyCode::Esc => {
+        KeyCode::Esc | KeyCode::Char('q') => {
             app.overlay = None;
         }
-        KeyCode::Char('q') => {
-            app.overlay = None;
-        }
-        KeyCode::Up => {
+        KeyCode::Up | KeyCode::Char('k') => {
             if app.filetree_selection > 0 {
                 app.filetree_selection -= 1;
             }
         }
-        KeyCode::Down => {
+        KeyCode::Down | KeyCode::Char('j') => {
             if app.filetree_selection + 1 < app.filetree_entries.len() {
                 app.filetree_selection += 1;
             }
         }
         KeyCode::Enter => {
-            let entries = &app.filetree_entries.clone();
+            let entries = app.filetree_entries.clone();
             if let Some((path, is_dir)) = entries.get(app.filetree_selection) {
                 if *is_dir {
-                    refresh_filetree(app, Some(path));
+                    if path == ".." {
+                        if let Some(parent) = std::path::Path::new(&app.filetree_current).parent() {
+                            app.filetree_current = parent.to_string_lossy().to_string();
+                        }
+                    } else {
+                        app.filetree_current = path.clone();
+                    }
+                    refresh_filetree(app);
                 } else {
                     app.open_in_editor(path);
                     app.overlay = None;
@@ -110,12 +114,16 @@ fn handle_filetree_key(app: &mut App, key: KeyEvent) -> Result<Action> {
     Ok(Action::None)
 }
 
-fn refresh_filetree(app: &mut App, subdir: Option<&str>) {
-    let start = subdir.map(|s| s.to_string()).unwrap_or_else(|| app.filetree_base.clone());
+fn refresh_filetree(app: &mut App) {
+    let start = app.filetree_current.clone();
     let mut entries = Vec::new();
-    if subdir.is_some() && start != app.filetree_base {
+    
+    let base_path = std::path::Path::new(&app.filetree_base);
+    let start_path = std::path::Path::new(&start);
+    if start_path != base_path {
         entries.push(("..".to_string(), true));
     }
+    
     if let Ok(readdir) = std::fs::read_dir(&start) {
         for entry in readdir.flatten() {
             let path = entry.path();
@@ -177,7 +185,8 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             return Ok(Action::None);
         }
         KeyCode::Char('f') => {
-            refresh_filetree(app, None);
+            app.filetree_current = app.filetree_base.clone();
+            refresh_filetree(app);
             app.overlay = Some(Overlay::FileTree);
         }
         KeyCode::Char('b') => {

@@ -97,10 +97,23 @@ fn render_filetree_overlay(f: &mut Frame, area: Rect, app: &App) {
         .iter()
         .enumerate()
         .map(|(i, (path, is_dir))| {
-            let content = if *is_dir {
-                format!("  {} /", path)
+            let display_name = if path == ".." {
+                "..".to_string()
             } else {
-                format!("  {}", path)
+                std::path::Path::new(path)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string()
+            };
+            let content = if *is_dir {
+                if path == ".." {
+                    "  📁 ..".to_string()
+                } else {
+                    format!("  📁 {}/", display_name)
+                }
+            } else {
+                format!("  📄 {}", display_name)
             };
             let style = if i == app.filetree_selection {
                 Style::default()
