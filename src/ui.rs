@@ -8,9 +8,15 @@ use ratatui::Frame;
 pub fn render(f: &mut Frame, app: &mut App) {
     let area = f.area();
 
+    let status_height = if matches!(app.mode, InputMode::Navigation) && app.overlay.is_none() {
+        2
+    } else {
+        1
+    };
+
     let main = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .constraints([Constraint::Min(1), Constraint::Length(status_height)])
         .split(area);
 
     let main_area = main[0];
@@ -388,18 +394,19 @@ fn status_bar(app: &App) -> Paragraph<'static> {
         Color::Green
     };
 
-    let mut spans = vec![
-        Span::styled(
-            format!(" {} ", mode_str),
-            Style::default()
-                .fg(Color::Black)
-                .bg(bg)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(format!(" {}  │ ", pane_name)),
-    ];
+    let mut lines = Vec::new();
 
     if let Some(overlay) = app.overlay {
+        let mut spans = vec![
+            Span::styled(
+                format!(" {} ", mode_str),
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(format!(" {}  │ ", pane_name)),
+        ];
         match overlay {
             Overlay::FileTree => {
                 spans.push(Span::styled("▲▼", Style::default().fg(Color::Yellow)));
@@ -421,9 +428,20 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 spans.push(Span::raw(" No"));
             }
         }
+        lines.push(Line::from(spans));
     } else {
         match app.mode {
             InputMode::Normal => {
+                let mut spans = vec![
+                    Span::styled(
+                        format!(" {} ", mode_str),
+                        Style::default()
+                            .fg(Color::Black)
+                            .bg(bg)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(format!(" {}  │ ", pane_name)),
+                ];
                 let alt_key = if cfg!(target_os = "macos") { "Option" } else { "Alt" };
                 spans.push(Span::styled(format!("{}-Space", alt_key), Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(" Nav Mode  "));
@@ -431,26 +449,53 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 spans.push(Span::raw(" Save & Quit  "));
                 spans.push(Span::styled("Ctrl-c", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(" Interrupt"));
+                lines.push(Line::from(spans));
             }
             InputMode::Navigation => {
-                spans.push(Span::styled("1-4", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(" Focus  "));
-                spans.push(Span::styled("f", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(" File Tree  "));
-                spans.push(Span::styled("e", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(" Send REPL  "));
-                spans.push(Span::styled("m/v/h/=", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(" Max/Restore  "));
-                spans.push(Span::styled("?", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(" Help  "));
-                spans.push(Span::styled("Esc", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(" Normal  "));
-                spans.push(Span::styled("q", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(" Quit"));
+                let mut line1_spans = vec![
+                    Span::styled(
+                        format!(" {} ", mode_str),
+                        Style::default()
+                            .fg(Color::Black)
+                            .bg(bg)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(format!(" {}  │ ", pane_name)),
+                ];
+                line1_spans.push(Span::styled("1-4", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Focus  "));
+                line1_spans.push(Span::styled("f", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" File Tree  "));
+                line1_spans.push(Span::styled("b", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Buffers  "));
+                line1_spans.push(Span::styled("e", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Send REPL  "));
+                line1_spans.push(Span::styled("?", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Help"));
+                lines.push(Line::from(line1_spans));
+
+                // Line 2
+                let prefix_len = mode_str.len() + 2 + pane_name.len() + 3;
+                let line2_padding = format!("{}│ ", " ".repeat(prefix_len));
+                let mut line2_spans = vec![
+                    Span::raw(line2_padding),
+                ];
+                line2_spans.push(Span::styled("m", Style::default().fg(Color::Yellow)));
+                line2_spans.push(Span::raw(" Max Full  "));
+                line2_spans.push(Span::styled("v", Style::default().fg(Color::Yellow)));
+                line2_spans.push(Span::raw(" Max Vert  "));
+                line2_spans.push(Span::styled("h", Style::default().fg(Color::Yellow)));
+                line2_spans.push(Span::raw(" Max Horiz  "));
+                line2_spans.push(Span::styled("=", Style::default().fg(Color::Yellow)));
+                line2_spans.push(Span::raw(" Restore  "));
+                line2_spans.push(Span::styled("Esc", Style::default().fg(Color::Yellow)));
+                line2_spans.push(Span::raw(" Normal  "));
+                line2_spans.push(Span::styled("q", Style::default().fg(Color::Yellow)));
+                line2_spans.push(Span::raw(" Quit"));
+                lines.push(Line::from(line2_spans));
             }
         }
     }
 
-    let text = Line::from(spans);
-    Paragraph::new(text).wrap(Wrap { trim: false })
+    Paragraph::new(lines).wrap(Wrap { trim: false })
 }
