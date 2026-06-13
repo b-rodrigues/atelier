@@ -2,11 +2,14 @@ mod app;
 mod config;
 mod event;
 mod pane;
+mod renderer;
 mod ui;
 
 use crate::app::App;
 use crate::config::Config;
 use crate::event::Action;
+use crate::pane::diagram::DiagramPane;
+use crate::pane::plot::PlotPane;
 use crate::pane::pty::PtyPane;
 use crate::pane::PaneKind;
 use anyhow::Result;
@@ -138,6 +141,8 @@ fn cleanup_temp_files() {
     let _ = std::fs::remove_file("/tmp/atelier-vars.csv");
     let _ = std::fs::remove_file("/tmp/atelier-cmd");
     let _ = std::fs::remove_file("/tmp/atelier-buffers.txt");
+    let _ = std::fs::remove_dir_all("/tmp/atelier");
+    let _ = std::fs::remove_dir_all("/tmp/atelier-plots");
 }
 
 fn main() -> Result<()> {
@@ -219,6 +224,18 @@ fn main() -> Result<()> {
             error: e.to_string(),
         })),
     }
+
+    let diagram = DiagramPane::new(
+        app.config.diagram.watch_file.clone().into(),
+        app.config.diagram.command.clone(),
+        app.config.diagram.args.clone(),
+    );
+    app.panes.push(Box::new(diagram));
+
+    let plots = PlotPane::new(
+        app.config.plots.watch_dir.clone().into(),
+    );
+    app.panes.push(Box::new(plots));
 
     run(app)
 }

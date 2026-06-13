@@ -21,6 +21,10 @@ pub struct Config {
     pub keybindings: KeybindingsConfig,
     #[serde(default)]
     pub layout: LayoutConfig,
+    #[serde(default)]
+    pub diagram: DiagramConfig,
+    #[serde(default)]
+    pub plots: PlotConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,6 +76,40 @@ pub struct KeybindingsConfig {
     pub leader: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DiagramConfig {
+    pub renderer: String,
+    pub command: String,
+    pub args: Vec<String>,
+    pub watch_file: String,
+}
+
+impl Default for DiagramConfig {
+    fn default() -> Self {
+        Self {
+            renderer: "dot".into(),
+            command: "dot".into(),
+            args: vec!["-Tpng".into()],
+            watch_file: "/tmp/atelier/pipeline.dot".into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PlotConfig {
+    pub watch_dir: String,
+}
+
+impl Default for PlotConfig {
+    fn default() -> Self {
+        Self {
+            watch_dir: "/tmp/atelier-plots".into(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -87,6 +125,8 @@ impl Default for Config {
                 leader: "ctrl-space".into(),
             },
             layout: LayoutConfig::default(),
+            diagram: DiagramConfig::default(),
+            plots: PlotConfig::default(),
         }
     }
 }

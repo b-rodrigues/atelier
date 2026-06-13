@@ -19,6 +19,11 @@
           cargoLock.lockFile = ./Cargo.lock;
 
           nativeBuildInputs = [ pkgs.makeWrapper ];
+
+          postInstall = ''
+            wrapProgram $out/bin/atelier \
+              --prefix PATH : ${pkgs.graphviz}/bin
+          '';
         };
       in
       {
@@ -37,6 +42,7 @@
             gcc
             neovim
             nano
+            graphviz
             atelier-pkg
           ];
 

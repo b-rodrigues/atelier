@@ -5,10 +5,12 @@ edition = "2021"
 description = "A native Ratatui-based TUI IDE for the T programming language"
 
 [dependencies]
-ratatui = "0.29"
+ratatui = "0.30"
 crossterm = "0.28"
 portable-pty = "0.8"
 vt100 = "0.15"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 anyhow = "1"
+image = { version = "0.25", default-features = false, features = ["png"] }
+ratatui-image = { version = "11", default-features = false, features = ["crossterm"] }

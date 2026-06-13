@@ -1,3 +1,5 @@
+pub mod diagram;
+pub mod plot;
 pub mod pty;
 pub mod vars;
 
@@ -10,6 +12,8 @@ pub enum PaneKind {
     Repl,
     Variables,
     Terminal,
+    Diagram,
+    Plot,
 }
 
 pub trait Pane {

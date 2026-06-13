@@ -193,6 +193,8 @@ fn clean_editor_line(line: &str) -> String {
             "repl" => PaneKind::Repl,
             "variables" => PaneKind::Variables,
             "terminal" => PaneKind::Terminal,
+            "diagram" => PaneKind::Diagram,
+            "plot" => PaneKind::Plot,
             _ => return None,
         };
         self.panes.iter().position(|p| p.kind() == kind)

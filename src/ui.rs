@@ -33,6 +33,8 @@ pub fn render(f: &mut Frame, app: &mut App) {
             "repl" => PaneKind::Repl,
             "variables" => PaneKind::Variables,
             "terminal" => PaneKind::Terminal,
+            "diagram" => PaneKind::Diagram,
+            "plot" => PaneKind::Plot,
             _ => continue,
         };
         kinds[phys_pos] = kind;
@@ -404,7 +406,7 @@ fn render_quit_overlay(f: &mut Frame, area: Rect) {
                 .style(Style::default().bg(Color::Black)),
         )
         .style(Style::default().fg(Color::White))
-        .alignment(ratatui::layout::Alignment::Center);
+        .alignment(ratatui::layout::HorizontalAlignment::Center);
 
     f.render_widget(paragraph, rect);
 }
