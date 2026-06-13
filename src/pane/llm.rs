@@ -18,15 +18,17 @@ pub struct LlmPane {
     state: LlmState,
     config: LlmConfig,
     pending_context: Option<String>,
+    repo_path: Option<String>,
 }
 
 impl LlmPane {
-    pub fn new(config: LlmConfig) -> Self {
+    pub fn new(config: LlmConfig, repo_path: Option<String>) -> Self {
         Self {
             inner: None,
             state: LlmState::Uninitialised,
             config,
             pending_context: None,
+            repo_path,
         }
     }
 
@@ -53,7 +55,7 @@ impl LlmPane {
             "LLM".into(),
             &self.config.command,
             &args,
-            None,
+            self.repo_path.as_deref(),
         ) {
             Ok(mut pty) => {
                 if self.config.context_mode == "stdin" {

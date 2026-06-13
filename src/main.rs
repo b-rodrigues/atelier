@@ -225,7 +225,7 @@ fn main() -> Result<()> {
         repo_path.as_deref(),
     );
 
-    let llm = LlmPane::new(app.config.llm.clone());
+    let llm = LlmPane::new(app.config.llm.clone(), repo_path.clone());
 
     match editor {
         Ok(pane) => app.panes.push(Box::new(pane)),
