@@ -290,6 +290,22 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
                 }
             }
         }
+        KeyCode::Enter => {
+            if let Some(pane) = app.focused_pane() {
+                if pane.kind() == PaneKind::Transcript {
+                    app.send_transcript_to_repl();
+                    return Ok(Action::None);
+                }
+            }
+        }
+        KeyCode::Char('o') => {
+            if let Some(pane) = app.focused_pane() {
+                if pane.kind() == PaneKind::Transcript {
+                    app.send_transcript_to_editor();
+                    return Ok(Action::None);
+                }
+            }
+        }
         KeyCode::Char('q') => {
             app.overlay = Some(Overlay::QuitConfirm);
             app.mode = InputMode::Normal;

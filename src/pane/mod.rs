@@ -46,6 +46,10 @@ pub trait Pane {
 
     fn scroll(&mut self, _rows: i16) {}
 
+    fn get_selected_entry(&self) -> Option<&str> {
+        None
+    }
+
     fn push_transcript_entry(&mut self, _sent: &str, _response: &str) {}
 
     fn save_artifact(&mut self) -> Option<String> {

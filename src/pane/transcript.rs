@@ -23,6 +23,14 @@ impl TranscriptPane {
         self.scroll_offset = self.entries.len().saturating_sub(1);
     }
 
+    pub fn get_selected_entry(&self) -> Option<&str> {
+        if self.entries.is_empty() {
+            return None;
+        }
+        let idx = self.scroll_offset.min(self.entries.len().saturating_sub(1));
+        self.entries.get(idx).map(|(sent, _)| sent.as_str())
+    }
+
     pub fn to_markdown(&self) -> String {
         let mut md = String::new();
         md.push_str("# Atelier REPL Transcript\n\n");
@@ -71,41 +79,36 @@ impl Pane for TranscriptPane {
             )));
         } else {
             let start = self.scroll_offset.min(self.entries.len().saturating_sub(1));
-            for (i, (sent, response)) in self.entries.iter().enumerate().skip(start) {
-                let header = format!("▸ Entry {}", i + 1);
+            for (i, (sent, _)) in self.entries.iter().enumerate().skip(start) {
+                let is_selected = i == self.scroll_offset.min(self.entries.len().saturating_sub(1));
+                let prefix = if is_selected { "▸" } else { " " };
+                let header = format!("{} Entry {}", prefix, i + 1);
                 lines.push(Line::from(Span::styled(
                     header,
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
+                    if is_selected {
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD)
+                    },
                 )));
                 lines.push(Line::from(Span::styled(
-                    format!("  Sent: {}", sent),
+                    format!("  {}", sent),
                     Style::default().fg(Color::Green),
                 )));
-                if !response.is_empty() {
-                    lines.push(Line::from(Span::styled(
-                        "  Response:",
-                        Style::default().fg(Color::Gray),
-                    )));
-                    for resp_line in response.lines() {
-                        let truncated = if resp_line.len() > 120 {
-                            format!("{}...", &resp_line[..117])
-                        } else {
-                            resp_line.to_string()
-                        };
-                        lines.push(Line::from(Span::raw(format!("    {}", truncated))));
-                    }
-                }
                 lines.push(Line::from(""));
             }
 
-            if self.entries.len() > 5 {
+            if self.entries.len() > 1 {
+                let idx = self.scroll_offset.min(self.entries.len().saturating_sub(1)) + 1;
                 lines.push(Line::from(Span::styled(
                     format!(
-                        "{} entries (scroll offset: {}) — j/k to scroll",
+                        "{} / {} entries  —  j/k scroll, Enter send to REPL, o send to editor",
+                        idx,
                         self.entries.len(),
-                        self.scroll_offset
                     ),
                     Style::default().fg(Color::DarkGray),
                 )));
@@ -142,6 +145,22 @@ impl Pane for TranscriptPane {
 
         f.render_widget(block, area);
         f.render_widget(paragraph, inner);
+    }
+
+    fn scroll(&mut self, rows: i16) {
+        if rows > 0 {
+            for _ in 0..rows {
+                self.scroll_up();
+            }
+        } else {
+            for _ in 0..(-rows) {
+                self.scroll_down();
+            }
+        }
+    }
+
+    fn get_selected_entry(&self) -> Option<&str> {
+        self.get_selected_entry()
     }
 
     fn push_transcript_entry(&mut self, sent: &str, response: &str) {

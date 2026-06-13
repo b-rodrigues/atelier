@@ -253,6 +253,47 @@ fn clean_editor_line(line: &str) -> String {
         }
     }
 
+    pub fn send_transcript_to_repl(&mut self) {
+        let text = self
+            .panes
+            .iter()
+            .find(|p| p.kind() == PaneKind::Transcript)
+            .and_then(|p| p.get_selected_entry())
+            .map(|s| s.to_string());
+        let text = match text {
+            Some(t) => t,
+            None => return,
+        };
+        for pane in self.panes.iter_mut() {
+            if pane.kind() == PaneKind::Repl {
+                pane.write_input(text.as_bytes());
+                pane.write_input(b"\r");
+                break;
+            }
+        }
+    }
+
+    pub fn send_transcript_to_editor(&mut self) {
+        let text = self
+            .panes
+            .iter()
+            .find(|p| p.kind() == PaneKind::Transcript)
+            .and_then(|p| p.get_selected_entry())
+            .map(|s| s.to_string());
+        let text = match text {
+            Some(t) => t,
+            None => return,
+        };
+        let _ = std::fs::write("/tmp/atelier-editor-paste.txt", &text);
+        for pane in self.panes.iter_mut() {
+            if pane.kind() == PaneKind::Editor {
+                pane.write_input(b"\x1b");
+                pane.write_input(b":r /tmp/atelier-editor-paste.txt\r");
+                break;
+            }
+        }
+    }
+
     pub fn read_editor_buffers(&self) -> Vec<String> {
         let buffers_path = std::path::Path::new("/tmp/atelier-buffers.txt");
         let content = std::fs::read_to_string(buffers_path).unwrap_or_default();
