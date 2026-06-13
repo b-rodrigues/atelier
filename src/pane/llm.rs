@@ -149,6 +149,10 @@ impl Pane for LlmPane {
                             path,
                             Style::default().fg(Color::Green),
                         ),
+                        Span::styled(
+                            "▊",
+                            Style::default().fg(Color::Green).add_modifier(Modifier::SLOW_BLINK),
+                        ),
                     ]),
                     Line::from(""),
                     Line::from(Span::styled(
