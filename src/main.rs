@@ -225,7 +225,12 @@ fn main() -> Result<()> {
         repo_path.as_deref(),
     );
 
-    let llm = LlmPane::new(app.config.llm.clone(), repo_path.clone());
+    let default_path = repo_path.clone().unwrap_or_else(|| {
+        std::env::current_dir()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|_| ".".to_string())
+    });
+    let llm = LlmPane::new(app.config.llm.clone(), default_path);
 
     match editor {
         Ok(pane) => app.panes.push(Box::new(pane)),

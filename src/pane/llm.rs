@@ -3,14 +3,16 @@ use crate::context::AtelierContext;
 use crate::pane::{Pane, PaneKind};
 use crate::pane::pty::PtyPane;
 use ratatui::layout::Rect;
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 
 enum LlmState {
     Uninitialised,
+    AwaitingPath { default_path: String, input: String },
     Running { last_context_hash: u64 },
-    Dead,
+    Dead(String),
 }
 
 pub struct LlmPane {
@@ -18,60 +20,44 @@ pub struct LlmPane {
     state: LlmState,
     config: LlmConfig,
     pending_context: Option<String>,
-    repo_path: Option<String>,
+    default_path: String,
 }
 
 impl LlmPane {
-    pub fn new(config: LlmConfig, repo_path: Option<String>) -> Self {
+    pub fn new(config: LlmConfig, default_path: String) -> Self {
         Self {
             inner: None,
             state: LlmState::Uninitialised,
             config,
             pending_context: None,
-            repo_path,
+            default_path,
         }
     }
 
-    fn push_context_inner(&mut self, ctx: &AtelierContext) {
-        if let LlmState::Running {
-            last_context_hash,
-        } = self.state
-        {
-            if ctx.hash == last_context_hash {
-                return;
-            }
-        }
-        let md = ctx.to_markdown();
-        let _ = std::fs::write(&self.config.context_path, &md);
-        self.pending_context = Some(md);
-        self.spawn_or_refresh(ctx.hash);
-    }
-
-    fn spawn_or_refresh(&mut self, hash: u64) {
-        self.kill();
+    fn spawn_opencode(&mut self, path: &str) {
         let args = self.build_args();
         match PtyPane::spawn(
             PaneKind::Llm,
             "LLM".into(),
             &self.config.command,
             &args,
-            self.repo_path.as_deref(),
+            Some(path),
         ) {
-            Ok(mut pty) => {
-                if self.config.context_mode == "stdin" {
-                    if let Some(ctx) = &self.pending_context {
-                        pty.write_input(ctx.as_bytes());
-                        pty.write_input(b"\n");
+            Ok(pty) => {
+                self.inner = Some(pty);
+                if let Some(ctx) = &self.pending_context {
+                    if self.config.context_mode == "stdin" {
+                        self.inner.as_mut().unwrap().write_input(ctx.as_bytes());
+                        self.inner.as_mut().unwrap().write_input(b"\n");
                     }
                 }
-                self.inner = Some(pty);
                 self.state = LlmState::Running {
-                    last_context_hash: hash,
+                    last_context_hash: 0,
                 };
             }
             Err(e) => {
                 eprintln!("Failed to spawn LLM pane: {}", e);
-                self.state = LlmState::Dead;
+                self.state = LlmState::Dead(format!("Failed to spawn: {}", e));
             }
         }
     }
@@ -87,6 +73,33 @@ impl LlmPane {
         }
         args
     }
+
+    fn push_context_inner(&mut self, ctx: &AtelierContext) {
+        let should_update = match self.state {
+            LlmState::Running { last_context_hash } => last_context_hash != ctx.hash,
+            _ => false,
+        };
+        if !should_update {
+            return;
+        }
+
+        self.state = LlmState::Running {
+            last_context_hash: ctx.hash,
+        };
+
+        let md = ctx.to_markdown();
+        let _ = std::fs::write(&self.config.context_path, &md);
+        self.pending_context = Some(md);
+
+        if self.config.context_mode == "stdin" {
+            if let Some(pty) = &mut self.inner {
+                if let Some(ctx) = &self.pending_context {
+                    pty.write_input(ctx.as_bytes());
+                    pty.write_input(b"\n");
+                }
+            }
+        }
+    }
 }
 
 impl Pane for LlmPane {
@@ -99,34 +112,108 @@ impl Pane for LlmPane {
     }
 
     fn render(&mut self, f: &mut Frame, area: Rect, focused: bool) {
-        match &mut self.inner {
-            Some(pty) => pty.render(f, area, focused),
-            None => {
-                let status = match self.state {
-                    LlmState::Uninitialised => "Press l in Nav mode to start LLM with context.",
-                    LlmState::Dead => "LLM process failed to start.",
-                    _ => "Initialising...",
+        if matches!(self.state, LlmState::Uninitialised) {
+            self.state = LlmState::AwaitingPath {
+                default_path: self.default_path.clone(),
+                input: String::new(),
+            };
+        }
+
+        match &mut self.state {
+            LlmState::AwaitingPath {
+                default_path,
+                input,
+            } => {
+                let path = if input.is_empty() {
+                    default_path.as_str()
+                } else {
+                    input.as_str()
                 };
-                let text = Paragraph::new(vec![
+
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .title("LLM");
+
+                let inner = block.inner(area);
+                f.render_widget(block, area);
+
+                let lines = vec![
                     Line::from(Span::styled(
-                        "LLM pane not started.",
-                        ratatui::style::Style::default().fg(ratatui::style::Color::DarkGray),
+                        "LLM not started. Enter the project path to spawn opencode:",
+                        Style::default().fg(Color::Cyan),
                     )),
                     Line::from(""),
+                    Line::from(vec![
+                        Span::raw("Path: "),
+                        Span::styled(
+                            path,
+                            Style::default().fg(Color::Green),
+                        ),
+                    ]),
+                    Line::from(""),
                     Line::from(Span::styled(
-                        status,
-                        ratatui::style::Style::default().fg(ratatui::style::Color::Cyan),
+                        "Press Enter to confirm, Esc to cancel",
+                        Style::default().fg(Color::DarkGray),
                     )),
-                ])
-                .wrap(Wrap { trim: true });
-                f.render_widget(text, area);
+                ];
+                let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
+                f.render_widget(paragraph, inner);
             }
+            LlmState::Running { .. } => {
+                if let Some(pty) = &mut self.inner {
+                    pty.render(f, area, focused);
+                }
+            }
+            LlmState::Dead(msg) => {
+                let lines = vec![
+                    Line::from(Span::styled(
+                        "LLM pane failed to start.",
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    )),
+                    Line::from(""),
+                    Line::from(Span::styled(msg.as_str(), Style::default().fg(Color::Red))),
+                ];
+                let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
+                f.render_widget(paragraph, area);
+            }
+            _ => {}
         }
     }
 
     fn write_input(&mut self, bytes: &[u8]) {
-        if let Some(pty) = &mut self.inner {
-            pty.write_input(bytes);
+        match &mut self.state {
+            LlmState::AwaitingPath {
+                default_path,
+                input,
+            } => match bytes {
+                b"\r" | b"\n" => {
+                    let path = if input.is_empty() {
+                        default_path.clone()
+                    } else {
+                        input.clone()
+                    };
+                    self.spawn_opencode(&path);
+                }
+                b"\x7f" | b"\x08" => {
+                    input.pop();
+                }
+                b"\x1b" => {
+                    input.clear();
+                }
+                _ => {
+                    if let Ok(s) = std::str::from_utf8(bytes) {
+                        if s.chars().all(|c| c.is_ascii_graphic() || c == ' ' || c == '/' || c == '.' || c == '-' || c == '_' || c == '~') {
+                            input.push_str(s);
+                        }
+                    }
+                }
+            },
+            LlmState::Running { .. } => {
+                if let Some(pty) = &mut self.inner {
+                    pty.write_input(bytes);
+                }
+            }
+            _ => {}
         }
     }
 
