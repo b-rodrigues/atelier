@@ -4,16 +4,19 @@ mod context;
 mod event;
 mod pane;
 mod renderer;
+mod session;
 mod ui;
 
 use crate::app::App;
 use crate::config::Config;
+use crate::config::RecentProjects;
 use crate::event::Action;
 use crate::pane::diagram::DiagramPane;
 use crate::pane::llm::LlmPane;
 use crate::pane::plot::PlotPane;
 use crate::pane::pty::PtyPane;
 use crate::pane::tabs::TabContainer;
+use crate::pane::transcript::TranscriptPane;
 use crate::pane::Pane;
 use crate::pane::PaneKind;
 use anyhow::Result;
@@ -113,7 +116,7 @@ fn first_launch_prompt() -> Result<Config> {
     Ok(config)
 }
 
-fn run(mut app: App) -> Result<()> {
+fn run(mut app: App) -> Result<Option<String>> {
     let mut stdout = stdout();
     execute!(stdout, EnterAlternateScreen)?;
     terminal::enable_raw_mode()?;
@@ -135,6 +138,13 @@ fn run(mut app: App) -> Result<()> {
         }
     }
 
+    let new_path = app.should_relaunch.clone();
+
+    // Save artifacts (transcript markdown, etc.)
+    for pane in app.panes.iter_mut() {
+        pane.save_artifact();
+    }
+
     app.kill_all();
     cleanup_temp_files();
 
@@ -142,7 +152,7 @@ fn run(mut app: App) -> Result<()> {
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
 
-    Ok(())
+    Ok(new_path)
 }
 
 fn cleanup_temp_files() {
@@ -164,7 +174,14 @@ fn main() -> Result<()> {
 
     let repo_path = std::env::args().nth(1);
 
+    if let Some(ref path) = repo_path {
+        RecentProjects::add_project(path);
+    }
+
     let mut app = App::new(config, repo_path.clone());
+
+    // Restore session on launch
+    app.restore_session();
 
     let mut editor_args = app.config.editor.args.clone();
     let cmd_name = std::path::Path::new(&app.config.editor.command)
@@ -259,5 +276,17 @@ fn main() -> Result<()> {
     );
     app.panes.push(Box::new(plots));
 
-    run(app)
+    let transcript = TranscriptPane::new();
+    app.panes.push(Box::new(transcript));
+
+    let new_path = run(app)?;
+
+    if let Some(path) = new_path {
+        let exe = std::env::current_exe().ok();
+        if let Some(exe) = exe {
+            let _ = std::process::Command::new(exe).arg(&path).spawn();
+        }
+    }
+
+    Ok(())
 }

@@ -94,6 +94,31 @@ fn handle_overlay_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             }
             Ok(Action::None)
         }
+        Some(Overlay::ProjectSwitcher) => {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    app.overlay = None;
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    if app.project_switcher_selection > 0 {
+                        app.project_switcher_selection -= 1;
+                    }
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    if app.project_switcher_selection + 1 < app.recent_projects.len() {
+                        app.project_switcher_selection += 1;
+                    }
+                }
+                KeyCode::Enter => {
+                    if let Some(path) = app.recent_projects.get(app.project_switcher_selection).cloned() {
+                        app.should_relaunch = Some(path);
+                        app.overlay = None;
+                    }
+                }
+                _ => {}
+            }
+            Ok(Action::None)
+        }
         None => unreachable!(),
     }
 }
@@ -213,20 +238,46 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             if let Some(idx) = app.pane_index_at_physical_pos(0) {
                 app.focus = idx;
             }
+            app.maximized = MaximizedState::None;
         }
         KeyCode::Char('2') => {
             if let Some(idx) = app.pane_index_at_physical_pos(1) {
                 app.focus = idx;
             }
+            app.maximized = MaximizedState::None;
         }
         KeyCode::Char('3') => {
             if let Some(idx) = app.pane_index_at_physical_pos(2) {
                 app.focus = idx;
             }
+            app.maximized = MaximizedState::None;
         }
         KeyCode::Char('4') => {
             if let Some(idx) = app.pane_index_at_physical_pos(3) {
                 app.focus = idx;
+            }
+            app.maximized = MaximizedState::None;
+        }
+        KeyCode::Char('5') | KeyCode::Char('t') => {
+            if let Some(idx) = app.panes.iter().position(|p| p.kind() == PaneKind::Transcript) {
+                app.focus = idx;
+                app.maximized = MaximizedState::Full;
+            }
+        }
+        KeyCode::Char('j') | KeyCode::Down => {
+            if let Some(pane) = app.focused_pane_mut() {
+                if pane.kind() == PaneKind::Transcript {
+                    pane.write_input(b"j");
+                    return Ok(Action::None);
+                }
+            }
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            if let Some(pane) = app.focused_pane_mut() {
+                if pane.kind() == PaneKind::Transcript {
+                    pane.write_input(b"k");
+                    return Ok(Action::None);
+                }
             }
         }
         KeyCode::Char('q') => {
@@ -260,29 +311,66 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
                 app.focus = idx;
             }
         }
+        KeyCode::Char('p') => {
+            app.recent_projects = crate::config::RecentProjects::load().paths;
+            app.project_switcher_selection = 0;
+            app.overlay = Some(Overlay::ProjectSwitcher);
+        }
         KeyCode::Char('m') => {
-            app.maximized = if app.maximized == MaximizedState::Full {
-                MaximizedState::None
+            if app.focused_pane().map(|p| p.kind() == PaneKind::Transcript).unwrap_or(false) {
+                if app.maximized == MaximizedState::Full {
+                    app.maximized = MaximizedState::None;
+                    if let Some(idx) = app.pane_index_at_physical_pos(0) {
+                        app.focus = idx;
+                    }
+                } else {
+                    app.maximized = MaximizedState::Full;
+                }
             } else {
-                MaximizedState::Full
-            };
+                app.maximized = if app.maximized == MaximizedState::Full {
+                    MaximizedState::None
+                } else {
+                    MaximizedState::Full
+                };
+            }
         }
         KeyCode::Char('v') => {
-            app.maximized = if app.maximized == MaximizedState::Vertical {
-                MaximizedState::None
+            if app.focused_pane().map(|p| p.kind() == PaneKind::Transcript).unwrap_or(false) {
+                app.maximized = MaximizedState::None;
+                if let Some(idx) = app.pane_index_at_physical_pos(0) {
+                    app.focus = idx;
+                }
             } else {
-                MaximizedState::Vertical
-            };
+                app.maximized = if app.maximized == MaximizedState::Vertical {
+                    MaximizedState::None
+                } else {
+                    MaximizedState::Vertical
+                };
+            }
         }
         KeyCode::Char('h') => {
-            app.maximized = if app.maximized == MaximizedState::Horizontal {
-                MaximizedState::None
+            if app.focused_pane().map(|p| p.kind() == PaneKind::Transcript).unwrap_or(false) {
+                app.maximized = MaximizedState::None;
+                if let Some(idx) = app.pane_index_at_physical_pos(0) {
+                    app.focus = idx;
+                }
             } else {
-                MaximizedState::Horizontal
-            };
+                app.maximized = if app.maximized == MaximizedState::Horizontal {
+                    MaximizedState::None
+                } else {
+                    MaximizedState::Horizontal
+                };
+            }
         }
         KeyCode::Char('=') => {
-            app.maximized = MaximizedState::None;
+            if app.focused_pane().map(|p| p.kind() == PaneKind::Transcript).unwrap_or(false) {
+                app.maximized = MaximizedState::None;
+                if let Some(idx) = app.pane_index_at_physical_pos(0) {
+                    app.focus = idx;
+                }
+            } else {
+                app.maximized = MaximizedState::None;
+            }
         }
         KeyCode::Esc => {}
         _ => {

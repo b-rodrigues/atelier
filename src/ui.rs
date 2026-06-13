@@ -184,6 +184,18 @@ pub fn render(f: &mut Frame, app: &mut App) {
         }
     }
 
+    // Render non-grid panes full-screen when focused
+    if app.focus >= 4 && app.maximized == MaximizedState::Full {
+        if let Some(pane) = app.panes.get_mut(app.focus) {
+            let block = make_block(pane.name(), true);
+            let inner = block.inner(main_area);
+            pane.resize(inner.width, inner.height);
+            f.render_widget(Clear, main_area);
+            f.render_widget(block, main_area);
+            pane.render(f, inner, true);
+        }
+    }
+
     if let Some(overlay) = app.overlay {
         render_overlay(f, area, overlay, app);
     }
@@ -198,6 +210,7 @@ fn render_overlay(f: &mut Frame, area: Rect, overlay: Overlay, app: &App) {
         Overlay::BufferList => render_bufferlist_overlay(f, area, app),
         Overlay::Help => render_help_overlay(f, area),
         Overlay::QuitConfirm => render_quit_overlay(f, area),
+        Overlay::ProjectSwitcher => render_project_switcher_overlay(f, area, app),
     }
 }
 
@@ -348,10 +361,12 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         Line::from(""),
         Line::from(Span::styled(" Navigation Mode:", Style::default().add_modifier(Modifier::BOLD))),
         Line::from(" 1-4         Focus pane 1-4"),
+        Line::from(" 5/t         Focus REPL transcript"),
         Line::from(" f           File tree browser"),
         Line::from(" b           Buffer list hint"),
-        Line::from(" e           Send clipboard to REPL"),
+        Line::from(" e           Send to REPL (cursor line or clipboard)"),
         Line::from(" l           Push context to LLM pane + focus it"),
+        Line::from(" p           Project switcher (recent repos)"),
         Line::from(" m           Maximize/restore focused pane fully"),
         Line::from(" v           Maximize/restore focused pane vertically"),
         Line::from(" h           Maximize/restore focused pane horizontally"),
@@ -384,6 +399,50 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         .style(Style::default().fg(Color::White));
 
     f.render_widget(paragraph, rect);
+}
+
+fn render_project_switcher_overlay(f: &mut Frame, area: Rect, app: &App) {
+    let rect = centered_rect(area, 50, 40);
+    f.render_widget(Clear, rect);
+
+    let items: Vec<ListItem> = app
+        .recent_projects
+        .iter()
+        .enumerate()
+        .map(|(i, path)| {
+            let display = if path.len() > 60 {
+                format!("...{}", &path[path.len().saturating_sub(57)..])
+            } else {
+                path.clone()
+            };
+            let style = if i == app.project_switcher_selection {
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            ListItem::new(format!("  {}", display)).style(style)
+        })
+        .collect();
+
+    let list = if items.is_empty() {
+        let empty = vec![ListItem::new("  No recent projects").style(Style::default().fg(Color::DarkGray))];
+        List::new(empty)
+    } else {
+        List::new(items)
+    }
+    .block(
+        Block::default()
+            .title(" Recent Projects ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Cyan))
+            .style(Style::default().bg(Color::Black)),
+    )
+    .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
+
+    f.render_widget(list, rect);
 }
 
 fn render_quit_overlay(f: &mut Frame, area: Rect) {
@@ -496,6 +555,14 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 spans.push(Span::styled("n/Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
                 spans.push(Span::raw(" No"));
             }
+            Overlay::ProjectSwitcher => {
+                spans.push(Span::styled("▲▼", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Navigate  "));
+                spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Switch project  "));
+                spans.push(Span::styled("Esc/q", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(" Close"));
+            }
         }
         lines.push(Line::from(spans));
     } else {
@@ -533,14 +600,18 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 ];
                 line1_spans.push(Span::styled("1-4", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Focus  "));
+                line1_spans.push(Span::styled("5/t", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Transcript  "));
                 line1_spans.push(Span::styled("f", Style::default().fg(Color::Yellow)));
-                line1_spans.push(Span::raw(" File Tree  "));
+                line1_spans.push(Span::raw(" Tree  "));
                 line1_spans.push(Span::styled("b", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Buffers  "));
                 line1_spans.push(Span::styled("e", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Send REPL  "));
                 line1_spans.push(Span::styled("l", Style::default().fg(Color::Yellow)));
-                line1_spans.push(Span::raw(" LLM Ctx  "));
+                line1_spans.push(Span::raw(" LLM  "));
+                line1_spans.push(Span::styled("p", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Projects  "));
                 line1_spans.push(Span::styled("?", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Help"));
                 lines.push(Line::from(line1_spans));

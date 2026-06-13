@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::pane::{Pane, PaneKind};
+use crate::session::Session;
 use std::time::Instant;
 
 pub enum InputMode {
@@ -13,6 +14,7 @@ pub enum Overlay {
     BufferList,
     Help,
     QuitConfirm,
+    ProjectSwitcher,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +34,9 @@ pub struct App {
     pub maximized: MaximizedState,
     pub buffer_input: String,
     pub should_quit: bool,
+    pub should_relaunch: Option<String>,
+    pub recent_projects: Vec<String>,
+    pub project_switcher_selection: usize,
     pub filetree_base: String,
     pub filetree_current: String,
     pub filetree_scroll: usize,
@@ -58,6 +63,9 @@ impl App {
             maximized: initial_maximized,
             buffer_input: String::new(),
             should_quit: false,
+            should_relaunch: None,
+            recent_projects: Vec::new(),
+            project_switcher_selection: 0,
             filetree_base: base.clone(),
             filetree_current: base,
             filetree_scroll: 0,
@@ -96,6 +104,44 @@ impl App {
         }
     }
 
+    pub fn save_session(&self) {
+        let cwd = std::env::current_dir().ok().map(|p| p.to_string_lossy().to_string());
+        let editor_buffers = self.read_editor_buffers();
+        let repl_history = self
+            .panes
+            .iter()
+            .find(|p| p.kind() == PaneKind::Repl)
+            .map(|p| p.get_visible_lines())
+            .unwrap_or_default();
+        let session = Session {
+            cwd,
+            editor_buffers,
+            repl_history,
+        };
+        session.save();
+    }
+
+    pub fn restore_session(&mut self) {
+        if let Some(session) = Session::load() {
+            if let Some(ref cwd) = session.cwd {
+                let _ = std::env::set_current_dir(cwd);
+            }
+            if !session.editor_buffers.is_empty() {
+                let buffers = session.editor_buffers.clone();
+                // Defer buffer opening to after editor is ready — handled in main
+                for (i, pane) in self.panes.iter().enumerate() {
+                    if pane.kind() == PaneKind::Editor {
+                        let cmd = format!("\x1b\x1b: silent! e {}\r", buffers.join(" "));
+                        if let Some(editor) = self.panes.get_mut(i) {
+                            editor.write_input(cmd.as_bytes());
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     pub fn save_all_and_quit(&mut self) {
         let is_nano = self.config.editor.command.contains("nano");
         for (i, pane) in self.panes.iter().enumerate() {
@@ -112,6 +158,7 @@ impl App {
                 break;
             }
         }
+        self.save_session();
         self.should_quit = true;
     }
 
@@ -187,15 +234,36 @@ fn clean_editor_line(line: &str) -> String {
         if line.is_empty() {
             return;
         }
+        let mut response = String::new();
         for (i, pane) in self.panes.iter().enumerate() {
             if pane.kind() == PaneKind::Repl {
                 if let Some(repl) = self.panes.get_mut(i) {
                     repl.write_input(line.as_bytes());
                     repl.write_input(b"\r");
+                    response = repl.get_visible_lines().join("\n");
                 }
-                return;
+                break;
             }
         }
+        for pane in self.panes.iter_mut() {
+            if pane.kind() == PaneKind::Transcript {
+                pane.push_transcript_entry(&line, &response);
+                break;
+            }
+        }
+    }
+
+    pub fn read_editor_buffers(&self) -> Vec<String> {
+        let buffers_path = std::path::Path::new("/tmp/atelier-buffers.txt");
+        let content = std::fs::read_to_string(buffers_path).unwrap_or_default();
+        content
+            .lines()
+            .filter(|l| {
+                let trimmed = l.trim();
+                !trimmed.is_empty() && !trimmed.contains("Press ENTER")
+            })
+            .map(|l| l.trim().to_string())
+            .collect()
     }
 
     pub fn pane_index_at_physical_pos(&self, pos: usize) -> Option<usize> {

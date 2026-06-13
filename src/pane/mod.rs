@@ -3,6 +3,7 @@ pub mod llm;
 pub mod plot;
 pub mod pty;
 pub mod tabs;
+pub mod transcript;
 pub mod vars;
 
 use ratatui::layout::Rect;
@@ -17,6 +18,7 @@ pub enum PaneKind {
     Diagram,
     Plot,
     Llm,
+    Transcript,
 }
 
 pub trait Pane {
@@ -41,6 +43,12 @@ pub trait Pane {
     fn push_context(&mut self, _ctx: &crate::context::AtelierContext) {}
 
     fn switch_tab(&mut self, _delta: i8) {}
+
+    fn push_transcript_entry(&mut self, _sent: &str, _response: &str) {}
+
+    fn save_artifact(&mut self) -> Option<String> {
+        None
+    }
 }
 
 pub struct ErrorPane {

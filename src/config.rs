@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-fn config_dir() -> PathBuf {
+pub fn config_dir() -> PathBuf {
     dirs_or_default()
 }
 
@@ -149,6 +149,47 @@ impl Default for LlmConfig {
             context_flag: String::new(),
             auto_context: default_auto_context(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecentProjects {
+    pub paths: Vec<String>,
+}
+
+impl RecentProjects {
+    pub fn path() -> PathBuf {
+        config_dir().join("recent.toml")
+    }
+
+    pub fn load() -> Self {
+        let path = Self::path();
+        if !path.exists() {
+            return Self { paths: Vec::new() };
+        }
+        std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|c| toml::from_str(&c).ok())
+            .unwrap_or(Self { paths: Vec::new() })
+    }
+
+    pub fn save(&self) {
+        if let Ok(content) = toml::to_string_pretty(self) {
+            if let Some(parent) = Self::path().parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            let _ = std::fs::write(Self::path(), content);
+        }
+    }
+
+    pub fn add_project(path: &str) {
+        let mut recent = Self::load();
+        recent.paths.retain(|p| p != path);
+        recent.paths.insert(0, path.to_string());
+        if recent.paths.len() > 10 {
+            recent.paths.truncate(10);
+        }
+        recent.save();
     }
 }
 
