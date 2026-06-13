@@ -1,5 +1,6 @@
 mod app;
 mod config;
+mod context;
 mod event;
 mod pane;
 mod renderer;
@@ -9,8 +10,11 @@ use crate::app::App;
 use crate::config::Config;
 use crate::event::Action;
 use crate::pane::diagram::DiagramPane;
+use crate::pane::llm::LlmPane;
 use crate::pane::plot::PlotPane;
 use crate::pane::pty::PtyPane;
+use crate::pane::tabs::TabContainer;
+use crate::pane::Pane;
 use crate::pane::PaneKind;
 use anyhow::Result;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
@@ -123,7 +127,11 @@ fn run(mut app: App) -> Result<()> {
 
         match event::handle_events(&mut app)? {
             Action::Quit => break,
-            Action::None => {}
+            Action::None => {
+                if app.config.llm.auto_context {
+                    app.refresh_llm_context();
+                }
+            }
         }
     }
 
@@ -141,6 +149,7 @@ fn cleanup_temp_files() {
     let _ = std::fs::remove_file("/tmp/atelier-vars.csv");
     let _ = std::fs::remove_file("/tmp/atelier-cmd");
     let _ = std::fs::remove_file("/tmp/atelier-buffers.txt");
+    let _ = std::fs::remove_file("/tmp/atelier-llm-context.md");
     let _ = std::fs::remove_dir_all("/tmp/atelier");
     let _ = std::fs::remove_dir_all("/tmp/atelier-plots");
 }
@@ -199,6 +208,8 @@ fn main() -> Result<()> {
         repo_path.as_deref(),
     );
 
+    let llm = LlmPane::new(app.config.llm.clone());
+
     match editor {
         Ok(pane) => app.panes.push(Box::new(pane)),
         Err(e) => app.panes.push(Box::new(pane::ErrorPane {
@@ -216,14 +227,25 @@ fn main() -> Result<()> {
         })),
     }
     app.panes.push(Box::new(vars));
-    match terminal_pty {
-        Ok(pane) => app.panes.push(Box::new(pane)),
-        Err(e) => app.panes.push(Box::new(pane::ErrorPane {
-            kind: PaneKind::Terminal,
-            name: "Terminal".into(),
-            error: e.to_string(),
-        })),
-    }
+
+    let bottom_right: Box<dyn Pane> = match terminal_pty {
+        Ok(pane) => {
+            let children: Vec<Box<dyn Pane>> = vec![Box::new(pane), Box::new(llm)];
+            Box::new(TabContainer::new(children))
+        }
+        Err(e) => {
+            let children: Vec<Box<dyn Pane>> = vec![
+                Box::new(pane::ErrorPane {
+                    kind: PaneKind::Terminal,
+                    name: "Terminal".into(),
+                    error: e.to_string(),
+                }),
+                Box::new(llm),
+            ];
+            Box::new(TabContainer::new(children))
+        }
+    };
+    app.panes.push(bottom_right);
 
     let diagram = DiagramPane::new(
         app.config.diagram.watch_file.clone().into(),

@@ -351,6 +351,7 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         Line::from(" f           File tree browser"),
         Line::from(" b           Buffer list hint"),
         Line::from(" e           Send clipboard to REPL"),
+        Line::from(" l           Push context to LLM pane + focus it"),
         Line::from(" m           Maximize/restore focused pane fully"),
         Line::from(" v           Maximize/restore focused pane vertically"),
         Line::from(" h           Maximize/restore focused pane horizontally"),
@@ -362,6 +363,7 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         Line::from(Span::styled(" Normal Mode:", Style::default().add_modifier(Modifier::BOLD))),
         Line::from(" All keys    Forwarded to focused PTY pane"),
         Line::from(" Ctrl-c      Send SIGINT"),
+        Line::from(" Ctrl-Tab    Switch tab in Terminal/LLM pane"),
         Line::from(""),
         Line::from(Span::styled(" File Tree:", Style::default().add_modifier(Modifier::BOLD))),
         Line::from(" Up/Down     Navigate"),
@@ -537,6 +539,8 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 line1_spans.push(Span::raw(" Buffers  "));
                 line1_spans.push(Span::styled("e", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Send REPL  "));
+                line1_spans.push(Span::styled("l", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" LLM Ctx  "));
                 line1_spans.push(Span::styled("?", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Help"));
                 lines.push(Line::from(line1_spans));

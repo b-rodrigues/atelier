@@ -185,6 +185,18 @@ fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             }
             Ok(Action::None)
         }
+        (KeyCode::Tab, KeyModifiers::CONTROL) => {
+            if let Some(pane) = app.focused_pane_mut() {
+                pane.switch_tab(1);
+            }
+            Ok(Action::None)
+        }
+        (KeyCode::Tab, mods) if mods == KeyModifiers::CONTROL | KeyModifiers::SHIFT => {
+            if let Some(pane) = app.focused_pane_mut() {
+                pane.switch_tab(-1);
+            }
+            Ok(Action::None)
+        }
         _ => {
             if let Some(pane) = app.focused_pane_mut() {
                 let bytes = key_event_to_bytes(key);
@@ -241,6 +253,12 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
         }
         KeyCode::Char('e') => {
             app.send_to_repl();
+        }
+        KeyCode::Char('l') => {
+            app.refresh_llm_context();
+            if let Some(idx) = app.pane_index_at_physical_pos(3) {
+                app.focus = idx;
+            }
         }
         KeyCode::Char('m') => {
             app.maximized = if app.maximized == MaximizedState::Full {

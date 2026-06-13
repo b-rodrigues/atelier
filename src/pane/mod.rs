@@ -1,6 +1,8 @@
 pub mod diagram;
+pub mod llm;
 pub mod plot;
 pub mod pty;
+pub mod tabs;
 pub mod vars;
 
 use ratatui::layout::Rect;
@@ -14,6 +16,7 @@ pub enum PaneKind {
     Terminal,
     Diagram,
     Plot,
+    Llm,
 }
 
 pub trait Pane {
@@ -26,6 +29,18 @@ pub trait Pane {
     fn get_cursor_line(&self) -> Option<String> {
         None
     }
+
+    fn get_status_line(&self) -> Option<String> {
+        None
+    }
+
+    fn get_visible_lines(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn push_context(&mut self, _ctx: &crate::context::AtelierContext) {}
+
+    fn switch_tab(&mut self, _delta: i8) {}
 }
 
 pub struct ErrorPane {

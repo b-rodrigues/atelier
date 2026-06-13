@@ -271,4 +271,53 @@ impl Pane for PtyPane {
         }
         Some(line)
     }
+
+    fn get_status_line(&self) -> Option<String> {
+        let screen = self.parser.screen();
+        let screen_size = screen.size();
+        if screen_size.0 == 0 {
+            return None;
+        }
+        let last_row = screen_size.0 - 1;
+        let cols = screen_size.1;
+
+        let mut line = String::new();
+        for c in 0..cols {
+            if let Some(cell) = screen.cell(last_row, c) {
+                let contents = cell.contents();
+                if !contents.is_empty() && contents != " " {
+                    line.push_str(&contents);
+                }
+            }
+        }
+        if line.trim().is_empty() {
+            None
+        } else {
+            Some(line)
+        }
+    }
+
+    fn get_visible_lines(&self) -> Vec<String> {
+        let screen = self.parser.screen();
+        let screen_size = screen.size();
+        let rows = screen_size.0;
+        let cols = screen_size.1;
+
+        let mut lines = Vec::new();
+        for r in 0..rows {
+            let mut line = String::new();
+            for c in 0..cols {
+                if let Some(cell) = screen.cell(r, c) {
+                    let contents = cell.contents();
+                    if !contents.is_empty() {
+                        line.push_str(&contents);
+                    }
+                }
+            }
+            if !line.trim().is_empty() {
+                lines.push(line);
+            }
+        }
+        lines
+    }
 }

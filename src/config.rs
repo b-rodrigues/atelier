@@ -25,6 +25,8 @@ pub struct Config {
     pub diagram: DiagramConfig,
     #[serde(default)]
     pub plots: PlotConfig,
+    #[serde(default)]
+    pub llm: LlmConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,6 +112,46 @@ impl Default for PlotConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LlmConfig {
+    pub command: String,
+    pub args: Vec<String>,
+    pub context_path: String,
+    pub context_mode: String,
+    pub context_flag: String,
+    pub auto_context: bool,
+}
+
+fn default_llm_command() -> String {
+    "opencode".into()
+}
+
+fn default_context_path() -> String {
+    "/tmp/atelier-llm-context.md".into()
+}
+
+fn default_context_mode() -> String {
+    "file".into()
+}
+
+fn default_auto_context() -> bool {
+    true
+}
+
+impl Default for LlmConfig {
+    fn default() -> Self {
+        Self {
+            command: default_llm_command(),
+            args: vec![],
+            context_path: default_context_path(),
+            context_mode: default_context_mode(),
+            context_flag: String::new(),
+            auto_context: default_auto_context(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -127,6 +169,7 @@ impl Default for Config {
             layout: LayoutConfig::default(),
             diagram: DiagramConfig::default(),
             plots: PlotConfig::default(),
+            llm: LlmConfig::default(),
         }
     }
 }

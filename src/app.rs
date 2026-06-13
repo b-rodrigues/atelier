@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::pane::{Pane, PaneKind};
+use std::time::Instant;
 
 pub enum InputMode {
     Normal,
@@ -36,6 +37,7 @@ pub struct App {
     pub filetree_scroll: usize,
     pub filetree_entries: Vec<(String, bool)>,
     pub filetree_selection: usize,
+    pub last_llm_context_refresh: Instant,
 }
 
 impl App {
@@ -61,6 +63,7 @@ impl App {
             filetree_scroll: 0,
             filetree_entries: Vec::new(),
             filetree_selection: 0,
+            last_llm_context_refresh: Instant::now(),
         }
     }
 
@@ -110,6 +113,18 @@ impl App {
             }
         }
         self.should_quit = true;
+    }
+
+    pub fn refresh_llm_context(&mut self) {
+        let now = Instant::now();
+        if now.duration_since(self.last_llm_context_refresh).as_millis() < 500 {
+            return;
+        }
+        self.last_llm_context_refresh = now;
+        let ctx = crate::context::AtelierContext::gather(self);
+        for pane in self.panes.iter_mut() {
+            pane.push_context(&ctx);
+        }
     }
 
     pub fn kill_all(&mut self) {
