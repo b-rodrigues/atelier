@@ -372,6 +372,18 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
                 app.maximized = MaximizedState::None;
             }
         }
+        KeyCode::Tab => {
+            if let Some(pane) = app.focused_pane_mut() {
+                pane.switch_tab(1);
+            }
+            return Ok(Action::None);
+        }
+        KeyCode::BackTab => {
+            if let Some(pane) = app.focused_pane_mut() {
+                pane.switch_tab(-1);
+            }
+            return Ok(Action::None);
+        }
         KeyCode::Esc => {}
         _ => {
             app.mode = InputMode::Normal;
