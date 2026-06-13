@@ -142,6 +142,12 @@ impl Pane for TabContainer {
             .unwrap_or_default()
     }
 
+    fn scroll(&mut self, rows: i16) {
+        if let Some(child) = self.children.get_mut(self.active) {
+            child.scroll(rows);
+        }
+    }
+
     fn push_context(&mut self, ctx: &AtelierContext) {
         for child in self.children.iter_mut() {
             child.push_context(ctx);

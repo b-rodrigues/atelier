@@ -248,6 +248,12 @@ impl Pane for LlmPane {
             .unwrap_or_default()
     }
 
+    fn scroll(&mut self, rows: i16) {
+        if let Some(pty) = &mut self.inner {
+            pty.scroll(rows);
+        }
+    }
+
     fn push_context(&mut self, ctx: &AtelierContext) {
         self.push_context_inner(ctx);
     }

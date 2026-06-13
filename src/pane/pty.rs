@@ -19,6 +19,7 @@ pub struct PtyPane {
     cols: u16,
     rows: u16,
     dead: bool,
+    scroll_offset: usize,
 }
 
 impl PtyPane {
@@ -88,7 +89,7 @@ impl PtyPane {
             }
         });
 
-        let parser = vt100::Parser::new(init_rows, init_cols, 0);
+        let parser = vt100::Parser::new(init_rows, init_cols, 10000);
 
         Ok(Self {
             kind,
@@ -100,6 +101,7 @@ impl PtyPane {
             cols: init_cols,
             rows: init_rows,
             dead: false,
+            scroll_offset: 0,
         })
     }
 
@@ -190,6 +192,8 @@ impl Pane for PtyPane {
             return;
         }
 
+        self.parser.set_scrollback(self.scroll_offset);
+
         let screen = self.parser.screen();
         let screen_size = screen.size();
         let screen_rows = screen_size.0;
@@ -228,6 +232,16 @@ impl Pane for PtyPane {
                 ));
             }
         }
+    }
+
+    fn scroll(&mut self, rows: i16) {
+        let max_offset = self.parser.screen().size().0 as usize;
+        if rows > 0 {
+            self.scroll_offset = self.scroll_offset.saturating_add(rows as usize).min(max_offset);
+        } else {
+            self.scroll_offset = self.scroll_offset.saturating_sub((-rows) as usize);
+        }
+        self.parser.set_scrollback(self.scroll_offset);
     }
 
     fn write_input(&mut self, bytes: &[u8]) {

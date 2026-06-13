@@ -21,6 +21,7 @@ use crate::pane::Pane;
 use crate::pane::PaneKind;
 use anyhow::Result;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::event::{EnableMouseCapture, DisableMouseCapture};
 use crossterm::execute;
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
@@ -111,7 +112,7 @@ fn first_launch_prompt() -> Result<Config> {
     config.save()?;
 
     terminal::enable_raw_mode()?;
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
 
     Ok(config)
 }
@@ -148,6 +149,7 @@ fn run(mut app: App) -> Result<Option<String>> {
     app.kill_all();
     cleanup_temp_files();
 
+    execute!(terminal.backend_mut(), DisableMouseCapture)?;
     terminal::disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;

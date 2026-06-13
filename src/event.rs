@@ -1,7 +1,7 @@
 use crate::app::{App, InputMode, Overlay, MaximizedState};
 use crate::pane::PaneKind;
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 use std::time::Duration;
 
 pub enum Action {
@@ -21,6 +21,16 @@ pub fn handle_events(app: &mut App) -> Result<Action> {
         Event::Resize(cols, rows) => {
             for pane in app.panes.iter_mut() {
                 pane.resize(cols, rows);
+            }
+            Ok(Action::None)
+        }
+        Event::Mouse(mouse) => {
+            if let Some(pane) = app.focused_pane_mut() {
+                match mouse.kind {
+                    MouseEventKind::ScrollUp => pane.scroll(3),
+                    MouseEventKind::ScrollDown => pane.scroll(-3),
+                    _ => {}
+                }
             }
             Ok(Action::None)
         }
