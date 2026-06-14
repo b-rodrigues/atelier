@@ -235,7 +235,16 @@ impl Pane for PtyPane {
     }
 
     fn scroll(&mut self, rows: i16) {
-        let max_offset = self.parser.screen().size().0 as usize;
+        if self.parser.screen().alternate_screen() {
+            let seq = if rows > 0 { b"\x1b[6~" } else { b"\x1b[5~" };
+            let abs = rows.unsigned_abs().max(1);
+            for _ in 0..abs {
+                let _ = self.writer.write(seq);
+            }
+            let _ = self.writer.flush();
+            return;
+        }
+        let max_offset = self.parser.screen().scrollback();
         if rows > 0 {
             self.scroll_offset = self.scroll_offset.saturating_add(rows as usize).min(max_offset);
         } else {
