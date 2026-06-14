@@ -44,6 +44,8 @@ pub trait Pane {
 
     fn switch_tab(&mut self, _delta: i8) {}
 
+    fn switch_to_tab(&mut self, _kind: PaneKind) -> bool { false }
+
     fn scroll(&mut self, _rows: i16) {}
 
     fn get_selected_entry(&self) -> Option<&str> {

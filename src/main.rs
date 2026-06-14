@@ -218,6 +218,21 @@ fn main() -> Result<()> {
 
     let vars = pane::vars::VarsPane::new("/tmp/atelier-vars.csv".into());
 
+    let plots_watch_dir = {
+        let raw = &app.config.plots.watch_dir;
+        let path = std::path::Path::new(raw);
+        if path.is_relative() {
+            if let Some(ref repo) = repo_path {
+                std::path::Path::new(repo).join(path)
+            } else {
+                path.to_path_buf()
+            }
+        } else {
+            path.to_path_buf()
+        }
+    };
+    let plots = PlotPane::new(plots_watch_dir);
+
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "bash".into());
     let terminal_pty = PtyPane::spawn(
         PaneKind::Terminal,
@@ -250,12 +265,16 @@ fn main() -> Result<()> {
             error: e.to_string(),
         })),
     }
-    app.panes.push(Box::new(vars));
+    let bottom_left: Box<dyn Pane> = {
+        let children: Vec<Box<dyn Pane>> = vec![Box::new(vars), Box::new(plots)];
+        Box::new(TabContainer::new(children, PaneKind::Variables))
+    };
+    app.panes.push(bottom_left);
 
     let bottom_right: Box<dyn Pane> = match terminal_pty {
         Ok(pane) => {
             let children: Vec<Box<dyn Pane>> = vec![Box::new(pane), Box::new(llm)];
-            Box::new(TabContainer::new(children))
+            Box::new(TabContainer::new(children, PaneKind::Terminal))
         }
         Err(e) => {
             let children: Vec<Box<dyn Pane>> = vec![
@@ -266,7 +285,7 @@ fn main() -> Result<()> {
                 }),
                 Box::new(llm),
             ];
-            Box::new(TabContainer::new(children))
+            Box::new(TabContainer::new(children, PaneKind::Terminal))
         }
     };
     app.panes.push(bottom_right);
@@ -277,22 +296,6 @@ fn main() -> Result<()> {
         app.config.diagram.args.clone(),
     );
     app.panes.push(Box::new(diagram));
-
-    let plots_watch_dir = {
-        let raw = &app.config.plots.watch_dir;
-        let path = std::path::Path::new(raw);
-        if path.is_relative() {
-            if let Some(ref repo) = repo_path {
-                std::path::Path::new(repo).join(path)
-            } else {
-                path.to_path_buf()
-            }
-        } else {
-            path.to_path_buf()
-        }
-    };
-    let plots = PlotPane::new(plots_watch_dir);
-    app.panes.push(Box::new(plots));
 
     let transcript = TranscriptPane::new();
     app.panes.push(Box::new(transcript));

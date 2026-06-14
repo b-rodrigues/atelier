@@ -275,34 +275,38 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
 
     match key.code {
         KeyCode::Char('1') => {
+            let preserve = app.should_preserve_maximized(0);
             if let Some(idx) = app.pane_index_at_physical_pos(0) {
                 app.focus = idx;
             }
-            if !app.should_preserve_maximized(0) {
+            if !preserve {
                 app.maximized = MaximizedState::None;
             }
         }
         KeyCode::Char('2') => {
+            let preserve = app.should_preserve_maximized(1);
             if let Some(idx) = app.pane_index_at_physical_pos(1) {
                 app.focus = idx;
             }
-            if !app.should_preserve_maximized(1) {
+            if !preserve {
                 app.maximized = MaximizedState::None;
             }
         }
         KeyCode::Char('3') => {
+            let preserve = app.should_preserve_maximized(2);
             if let Some(idx) = app.pane_index_at_physical_pos(2) {
                 app.focus = idx;
             }
-            if !app.should_preserve_maximized(2) {
+            if !preserve {
                 app.maximized = MaximizedState::None;
             }
         }
         KeyCode::Char('4') => {
+            let preserve = app.should_preserve_maximized(3);
             if let Some(idx) = app.pane_index_at_physical_pos(3) {
                 app.focus = idx;
             }
-            if !app.should_preserve_maximized(3) {
+            if !preserve {
                 app.maximized = MaximizedState::None;
             }
         }
@@ -313,8 +317,9 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             }
         }
         KeyCode::Char('c') => {
-            if let Some(idx) = app.panes.iter().position(|p| p.kind() == PaneKind::Plot) {
+            if let Some(idx) = app.pane_index_at_physical_pos(2) {
                 app.focus = idx;
+                app.panes.get_mut(idx).map(|p| p.switch_to_tab(PaneKind::Plot));
                 app.maximized = MaximizedState::Full;
             }
         }

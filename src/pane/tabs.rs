@@ -10,15 +10,17 @@ pub struct TabContainer {
     children: Vec<Box<dyn Pane>>,
     active: usize,
     name: String,
+    kind: PaneKind,
 }
 
 impl TabContainer {
-    pub fn new(children: Vec<Box<dyn Pane>>) -> Self {
+    pub fn new(children: Vec<Box<dyn Pane>>, kind: PaneKind) -> Self {
         let name = Self::build_name(&children, 0);
         Self {
             children,
             active: 0,
             name,
+            kind,
         }
     }
 
@@ -70,7 +72,7 @@ impl TabContainer {
 
 impl Pane for TabContainer {
     fn kind(&self) -> PaneKind {
-        PaneKind::Terminal
+        self.kind
     }
 
     fn name(&self) -> &str {
@@ -166,5 +168,15 @@ impl Pane for TabContainer {
         };
         self.active = new_active;
         self.name = Self::build_name(&self.children, self.active);
+    }
+
+    fn switch_to_tab(&mut self, kind: PaneKind) -> bool {
+        if let Some(pos) = self.children.iter().position(|c| c.kind() == kind) {
+            self.active = pos;
+            self.name = Self::build_name(&self.children, self.active);
+            true
+        } else {
+            false
+        }
     }
 }
