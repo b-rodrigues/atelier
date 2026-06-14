@@ -9,7 +9,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
     let area = f.area();
 
     let status_height = if matches!(app.mode, InputMode::Navigation) && app.overlay.is_none() {
-        2
+        3
     } else {
         1
     };
