@@ -360,12 +360,15 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         Line::from(" Ctrl-d      Quit (saves files)"),
         Line::from(""),
         Line::from(Span::styled(" Navigation Mode:", Style::default().add_modifier(Modifier::BOLD))),
+        Line::from(" Alt-↑/↓    Scroll focused pane"),
         Line::from(" 1-4         Focus pane 1-4"),
         Line::from(" 5/t         Focus REPL transcript"),
+        Line::from(" e           Send to editor (clipboard / transcript selection)"),
+        Line::from(" l           Send line to REPL (cursor line / transcript selection)"),
+        Line::from(" r           Send region to REPL (clipboard / transcript selection)"),
+        Line::from(" a           Push context to Assistant pane + focus it"),
         Line::from(" f           File tree browser"),
         Line::from(" b           Buffer list hint"),
-        Line::from(" e           Send to REPL (cursor line or clipboard)"),
-        Line::from(" l           Push context to LLM pane + focus it"),
         Line::from(" p           Project switcher (recent repos)"),
         Line::from(" m           Maximize/restore focused pane fully"),
         Line::from(" v           Maximize/restore focused pane vertically"),
@@ -375,10 +378,16 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         Line::from(" Esc         Back to normal mode"),
         Line::from(" q           Quit"),
         Line::from(""),
+        Line::from(Span::styled(" Transcript Pane:", Style::default().add_modifier(Modifier::BOLD))),
+        Line::from(" Alt-↑/↓    Scroll entries"),
+        Line::from(" Enter      Send selected entry to REPL"),
+        Line::from(" o          Send selected entry to editor"),
+        Line::from(""),
         Line::from(Span::styled(" Normal Mode:", Style::default().add_modifier(Modifier::BOLD))),
         Line::from(" All keys    Forwarded to focused PTY pane"),
+        Line::from(" Alt-↑/↓    Scroll focused pane"),
         Line::from(" Ctrl-c      Send SIGINT"),
-        Line::from(" Ctrl-Tab    Switch tab in Terminal/LLM pane"),
+        Line::from(" Ctrl-Tab    Switch tab in Terminal/Assistant pane"),
         Line::from(""),
         Line::from(Span::styled(" File Tree:", Style::default().add_modifier(Modifier::BOLD))),
         Line::from(" Up/Down     Navigate"),
@@ -602,14 +611,18 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 line1_spans.push(Span::raw(" Focus  "));
                 line1_spans.push(Span::styled("5/t", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Transcript  "));
+                line1_spans.push(Span::styled("e", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Editor  "));
+                line1_spans.push(Span::styled("l", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Line  "));
+                line1_spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Region  "));
+                line1_spans.push(Span::styled("a", Style::default().fg(Color::Yellow)));
+                line1_spans.push(Span::raw(" Assistant  "));
                 line1_spans.push(Span::styled("f", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Tree  "));
                 line1_spans.push(Span::styled("b", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Buffers  "));
-                line1_spans.push(Span::styled("e", Style::default().fg(Color::Yellow)));
-                line1_spans.push(Span::raw(" Send REPL  "));
-                line1_spans.push(Span::styled("l", Style::default().fg(Color::Yellow)));
-                line1_spans.push(Span::raw(" LLM  "));
                 line1_spans.push(Span::styled("p", Style::default().fg(Color::Yellow)));
                 line1_spans.push(Span::raw(" Projects  "));
                 line1_spans.push(Span::styled("?", Style::default().fg(Color::Yellow)));

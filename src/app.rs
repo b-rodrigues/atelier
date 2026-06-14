@@ -215,16 +215,27 @@ fn clean_editor_line(line: &str) -> String {
     trimmed.to_string()
 }
 
-    pub fn send_to_repl(&mut self) {
-        let mut line_to_send = None;
-        if let Some(pane) = self.panes.get(self.focus) {
-            if let Some(line) = pane.get_cursor_line() {
-                let cleaned = Self::clean_editor_line(&line);
-                if !cleaned.is_empty() {
-                    line_to_send = Some(cleaned);
+    pub fn send_to_repl(&mut self, force_clipboard: bool) {
+        let line_to_send = if let Some(pane) = self.panes.get(self.focus) {
+            if pane.kind() == PaneKind::Transcript {
+                pane.get_selected_entry().map(|s| s.to_string())
+            } else if !force_clipboard {
+                if let Some(line) = pane.get_cursor_line() {
+                    let cleaned = Self::clean_editor_line(&line);
+                    if !cleaned.is_empty() {
+                        Some(cleaned)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
                 }
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
 
         let line = match line_to_send {
             Some(l) => l,
@@ -245,50 +256,46 @@ fn clean_editor_line(line: &str) -> String {
                 break;
             }
         }
-        for pane in self.panes.iter_mut() {
+        let from_transcript = self.panes.get(self.focus)
+            .map(|p| p.kind() == PaneKind::Transcript)
+            .unwrap_or(false);
+        if !from_transcript {
+            for pane in self.panes.iter_mut() {
+                if pane.kind() == PaneKind::Transcript {
+                    pane.push_transcript_entry(&line, &response);
+                    break;
+                }
+            }
+        }
+    }
+
+    pub fn send_to_editor(&mut self) {
+        let text = if let Some(pane) = self.panes.get(self.focus) {
             if pane.kind() == PaneKind::Transcript {
-                pane.push_transcript_entry(&line, &response);
-                break;
+                pane.get_selected_entry().map(|s| s.to_string())
+            } else {
+                read_clipboard()
             }
-        }
-    }
+        } else {
+            None
+        };
 
-    pub fn send_transcript_to_repl(&mut self) {
-        let text = self
-            .panes
-            .iter()
-            .find(|p| p.kind() == PaneKind::Transcript)
-            .and_then(|p| p.get_selected_entry())
-            .map(|s| s.to_string());
         let text = match text {
             Some(t) => t,
             None => return,
         };
-        for pane in self.panes.iter_mut() {
-            if pane.kind() == PaneKind::Repl {
-                pane.write_input(text.as_bytes());
-                pane.write_input(b"\r");
-                break;
-            }
-        }
-    }
 
-    pub fn send_transcript_to_editor(&mut self) {
-        let text = self
-            .panes
-            .iter()
-            .find(|p| p.kind() == PaneKind::Transcript)
-            .and_then(|p| p.get_selected_entry())
-            .map(|s| s.to_string());
-        let text = match text {
-            Some(t) => t,
-            None => return,
-        };
-        let _ = std::fs::write("/tmp/atelier-editor-paste.txt", &text);
+        let paste_path = std::env::temp_dir().join(format!(
+            "atelier-editor-paste-{}.txt",
+            std::process::id()
+        ));
+        let _ = std::fs::write(&paste_path, &text);
         for pane in self.panes.iter_mut() {
             if pane.kind() == PaneKind::Editor {
-                pane.write_input(b"\x1b");
-                pane.write_input(b":r /tmp/atelier-editor-paste.txt\r");
+                pane.write_input(b"\x1b\x1b");
+                pane.write_input(
+                    format!(":r {}\r", paste_path.to_string_lossy()).as_bytes(),
+                );
                 break;
             }
         }

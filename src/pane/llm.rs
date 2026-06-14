@@ -38,7 +38,7 @@ impl LlmPane {
         let args = self.build_args();
         match PtyPane::spawn(
             PaneKind::Llm,
-            "LLM".into(),
+            "Assistant".into(),
             &self.config.command,
             &args,
             Some(path),
@@ -56,7 +56,7 @@ impl LlmPane {
                 };
             }
             Err(e) => {
-                eprintln!("Failed to spawn LLM pane: {}", e);
+                eprintln!("Failed to spawn Assistant pane: {}", e);
                 self.state = LlmState::Dead(format!("Failed to spawn: {}", e));
             }
         }
@@ -108,7 +108,7 @@ impl Pane for LlmPane {
     }
 
     fn name(&self) -> &str {
-        "LLM"
+        "Assistant"
     }
 
     fn render(&mut self, f: &mut Frame, area: Rect, focused: bool) {
@@ -132,14 +132,14 @@ impl Pane for LlmPane {
 
                 let block = Block::default()
                     .borders(Borders::ALL)
-                    .title("LLM");
+                    .title("Assistant");
 
                 let inner = block.inner(area);
                 f.render_widget(block, area);
 
                 let lines = vec![
                     Line::from(Span::styled(
-                        "LLM not started. Enter the project path to spawn opencode:",
+                        "Assistant not started. Enter the project path to spawn opencode:",
                         Style::default().fg(Color::Cyan),
                     )),
                     Line::from(""),
@@ -171,7 +171,7 @@ impl Pane for LlmPane {
             LlmState::Dead(msg) => {
                 let lines = vec![
                     Line::from(Span::styled(
-                        "LLM pane failed to start.",
+                        "Assistant pane failed to start.",
                         Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                     )),
                     Line::from(""),

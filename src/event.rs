@@ -232,6 +232,18 @@ fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             }
             Ok(Action::None)
         }
+        (KeyCode::Up, KeyModifiers::ALT) => {
+            if let Some(pane) = app.focused_pane_mut() {
+                pane.scroll(3);
+            }
+            Ok(Action::None)
+        }
+        (KeyCode::Down, KeyModifiers::ALT) => {
+            if let Some(pane) = app.focused_pane_mut() {
+                pane.scroll(-3);
+            }
+            Ok(Action::None)
+        }
         _ => {
             if let Some(pane) = app.focused_pane_mut() {
                 let bytes = key_event_to_bytes(key);
@@ -243,6 +255,24 @@ fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<Action> {
 }
 
 fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
+    if key.modifiers == KeyModifiers::ALT {
+        match key.code {
+            KeyCode::Up => {
+                if let Some(pane) = app.focused_pane_mut() {
+                    pane.scroll(3);
+                }
+                return Ok(Action::None);
+            }
+            KeyCode::Down => {
+                if let Some(pane) = app.focused_pane_mut() {
+                    pane.scroll(-3);
+                }
+                return Ok(Action::None);
+            }
+            _ => {}
+        }
+    }
+
     match key.code {
         KeyCode::Char('1') => {
             if let Some(idx) = app.pane_index_at_physical_pos(0) {
@@ -274,26 +304,10 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
                 app.maximized = MaximizedState::Full;
             }
         }
-        KeyCode::Char('j') | KeyCode::Down => {
-            if let Some(pane) = app.focused_pane_mut() {
-                if pane.kind() == PaneKind::Transcript {
-                    pane.write_input(b"j");
-                    return Ok(Action::None);
-                }
-            }
-        }
-        KeyCode::Char('k') | KeyCode::Up => {
-            if let Some(pane) = app.focused_pane_mut() {
-                if pane.kind() == PaneKind::Transcript {
-                    pane.write_input(b"k");
-                    return Ok(Action::None);
-                }
-            }
-        }
         KeyCode::Enter => {
             if let Some(pane) = app.focused_pane() {
                 if pane.kind() == PaneKind::Transcript {
-                    app.send_transcript_to_repl();
+                    app.send_to_repl(false);
                     return Ok(Action::None);
                 }
             }
@@ -301,7 +315,7 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
         KeyCode::Char('o') => {
             if let Some(pane) = app.focused_pane() {
                 if pane.kind() == PaneKind::Transcript {
-                    app.send_transcript_to_editor();
+                    app.send_to_editor();
                     return Ok(Action::None);
                 }
             }
@@ -329,9 +343,15 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             app.overlay = Some(Overlay::Help);
         }
         KeyCode::Char('e') => {
-            app.send_to_repl();
+            app.send_to_editor();
         }
         KeyCode::Char('l') => {
+            app.send_to_repl(false);
+        }
+        KeyCode::Char('r') => {
+            app.send_to_repl(true);
+        }
+        KeyCode::Char('a') => {
             app.refresh_llm_context();
             if let Some(idx) = app.pane_index_at_physical_pos(3) {
                 app.focus = idx;

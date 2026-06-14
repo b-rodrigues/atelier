@@ -18,20 +18,7 @@ impl TranscriptPane {
         }
     }
 
-    pub fn push_entry(&mut self, sent: &str, response: &str) {
-        self.entries.push((sent.to_string(), response.to_string()));
-        self.scroll_offset = self.entries.len().saturating_sub(1);
-    }
-
-    pub fn get_selected_entry(&self) -> Option<&str> {
-        if self.entries.is_empty() {
-            return None;
-        }
-        let idx = self.scroll_offset.min(self.entries.len().saturating_sub(1));
-        self.entries.get(idx).map(|(sent, _)| sent.as_str())
-    }
-
-    pub fn to_markdown(&self) -> String {
+    fn to_markdown(&self) -> String {
         let mut md = String::new();
         md.push_str("# Atelier REPL Transcript\n\n");
         for (i, (sent, response)) in self.entries.iter().enumerate() {
@@ -44,19 +31,6 @@ impl TranscriptPane {
             md.push_str("\n```\n\n");
         }
         md
-    }
-
-    fn scroll_up(&mut self) {
-        if self.scroll_offset > 0 {
-            self.scroll_offset -= 1;
-        }
-    }
-
-    fn scroll_down(&mut self) {
-        let max_scroll = self.entries.len().saturating_sub(1);
-        if self.scroll_offset < max_scroll {
-            self.scroll_offset += 1;
-        }
     }
 }
 
@@ -74,7 +48,12 @@ impl Pane for TranscriptPane {
 
         if self.entries.is_empty() {
             lines.push(Line::from(Span::styled(
-                "No entries yet. Send code to the REPL (Nav mode → e) to populate the transcript.",
+                "No entries yet. Send code to the REPL (Nav mode → l/r) to populate the transcript.",
+                Style::default().fg(Color::DarkGray),
+            )));
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "  Nav mode keys:  e  send to editor  |  l  send line  |  r  send region",
                 Style::default().fg(Color::DarkGray),
             )));
         } else {
@@ -102,17 +81,25 @@ impl Pane for TranscriptPane {
                 lines.push(Line::from(""));
             }
 
+            let idx = self.scroll_offset.min(self.entries.len().saturating_sub(1)) + 1;
+            lines.push(Line::from(Span::styled(
+                format!("{} / {} entries", idx, self.entries.len()),
+                Style::default().fg(Color::DarkGray),
+            )));
             if self.entries.len() > 1 {
-                let idx = self.scroll_offset.min(self.entries.len().saturating_sub(1)) + 1;
                 lines.push(Line::from(Span::styled(
-                    format!(
-                        "{} / {} entries  —  j/k scroll, Enter send to REPL, o send to editor",
-                        idx,
-                        self.entries.len(),
-                    ),
+                    "  Alt-↑/↓  scroll",
                     Style::default().fg(Color::DarkGray),
                 )));
             }
+            lines.push(Line::from(Span::styled(
+                "  Enter  send to REPL",
+                Style::default().fg(Color::DarkGray),
+            )));
+            lines.push(Line::from(Span::styled(
+                "  o      send to editor",
+                Style::default().fg(Color::DarkGray),
+            )));
         }
 
         let inner = Rect {
@@ -149,22 +136,24 @@ impl Pane for TranscriptPane {
 
     fn scroll(&mut self, rows: i16) {
         if rows > 0 {
-            for _ in 0..rows {
-                self.scroll_up();
-            }
+            self.scroll_offset = self.scroll_offset.saturating_sub(rows as usize);
         } else {
-            for _ in 0..(-rows) {
-                self.scroll_down();
-            }
+            let max_scroll = self.entries.len().saturating_sub(1);
+            self.scroll_offset = self.scroll_offset.saturating_add((-rows) as usize).min(max_scroll);
         }
     }
 
     fn get_selected_entry(&self) -> Option<&str> {
-        self.get_selected_entry()
+        if self.entries.is_empty() {
+            return None;
+        }
+        let idx = self.scroll_offset.min(self.entries.len().saturating_sub(1));
+        self.entries.get(idx).map(|(sent, _)| sent.as_str())
     }
 
     fn push_transcript_entry(&mut self, sent: &str, response: &str) {
-        self.push_entry(sent, response);
+        self.entries.push((sent.to_string(), response.to_string()));
+        self.scroll_offset = self.entries.len().saturating_sub(1);
     }
 
     fn save_artifact(&mut self) -> Option<String> {
@@ -173,11 +162,5 @@ impl Pane for TranscriptPane {
         Some(md)
     }
 
-    fn write_input(&mut self, bytes: &[u8]) {
-        if bytes == b"j" || bytes == b"B" {
-            self.scroll_down();
-        } else if bytes == b"k" || bytes == b"A" {
-            self.scroll_up();
-        }
-    }
+    fn write_input(&mut self, _bytes: &[u8]) {}
 }
