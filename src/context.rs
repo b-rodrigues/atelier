@@ -1,6 +1,7 @@
 use crate::app::App;
 use crate::pane::PaneKind;
 use std::fmt::Write;
+use std::path::Path;
 
 pub struct AtelierContext {
     pub cursor_line: Option<String>,
@@ -16,7 +17,7 @@ impl AtelierContext {
         let cursor_line = gather_cursor_line(app);
         let cursor_file = gather_cursor_file(app);
         let pipeline = gather_pipeline();
-        let variables = gather_variables();
+        let variables = gather_variables(&app.vars_csv_path);
         let repl_history = gather_repl_history(app);
 
         let hash = compute_hash(
@@ -144,8 +145,8 @@ fn unescape_csv_field(s: &str) -> String {
     }
 }
 
-fn gather_variables() -> Vec<(String, String, String)> {
-    let content = std::fs::read_to_string("/tmp/atelier-vars.csv").unwrap_or_default();
+fn gather_variables(path: &Path) -> Vec<(String, String, String)> {
+    let content = std::fs::read_to_string(path).unwrap_or_default();
     let mut lines = content.lines();
     let _header = lines.next();
     lines

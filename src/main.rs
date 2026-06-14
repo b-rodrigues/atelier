@@ -216,7 +216,7 @@ fn main() -> Result<()> {
         repo_path.as_deref(),
     );
 
-    let vars = pane::vars::VarsPane::new("/tmp/atelier-vars.csv".into());
+    let vars = pane::vars::VarsPane::new(app.vars_csv_path.clone());
 
     let plots_watch_dir = {
         let raw = &app.config.plots.watch_dir;

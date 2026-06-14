@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::pane::{Pane, PaneKind};
 use crate::session::Session;
+use std::path::PathBuf;
 use std::time::Instant;
 
 pub enum InputMode {
@@ -33,6 +34,7 @@ pub struct App {
     pub overlay: Option<Overlay>,
     pub maximized: MaximizedState,
     pub buffer_input: String,
+    pub vars_csv_path: PathBuf,
     pub should_quit: bool,
     pub should_relaunch: Option<String>,
     pub recent_projects: Vec<String>,
@@ -47,6 +49,10 @@ pub struct App {
 
 impl App {
     pub fn new(config: Config, repo_path: Option<String>) -> Self {
+        let vars_csv_path = repo_path
+            .as_ref()
+            .map(|p| PathBuf::from(p).join("_atelier/vars.csv"))
+            .unwrap_or_else(|| PathBuf::from("_atelier/vars.csv"));
         let base = repo_path.unwrap_or_else(|| ".".to_string());
         let initial_maximized = match config.layout.initial_maximized.as_str() {
             "full" => MaximizedState::Full,
@@ -54,6 +60,7 @@ impl App {
             "horizontal" => MaximizedState::Horizontal,
             _ => MaximizedState::None,
         };
+
         Self {
             config,
             panes: Vec::new(),
@@ -62,6 +69,7 @@ impl App {
             overlay: None,
             maximized: initial_maximized,
             buffer_input: String::new(),
+            vars_csv_path,
             should_quit: false,
             should_relaunch: None,
             recent_projects: Vec::new(),
