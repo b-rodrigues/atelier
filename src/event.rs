@@ -278,28 +278,48 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             if let Some(idx) = app.pane_index_at_physical_pos(0) {
                 app.focus = idx;
             }
-            app.maximized = MaximizedState::None;
+            if !app.should_preserve_maximized(0) {
+                app.maximized = MaximizedState::None;
+            }
         }
         KeyCode::Char('2') => {
             if let Some(idx) = app.pane_index_at_physical_pos(1) {
                 app.focus = idx;
             }
-            app.maximized = MaximizedState::None;
+            if !app.should_preserve_maximized(1) {
+                app.maximized = MaximizedState::None;
+            }
         }
         KeyCode::Char('3') => {
             if let Some(idx) = app.pane_index_at_physical_pos(2) {
                 app.focus = idx;
             }
-            app.maximized = MaximizedState::None;
+            if !app.should_preserve_maximized(2) {
+                app.maximized = MaximizedState::None;
+            }
         }
         KeyCode::Char('4') => {
             if let Some(idx) = app.pane_index_at_physical_pos(3) {
                 app.focus = idx;
             }
-            app.maximized = MaximizedState::None;
+            if !app.should_preserve_maximized(3) {
+                app.maximized = MaximizedState::None;
+            }
         }
         KeyCode::Char('5') | KeyCode::Char('t') => {
             if let Some(idx) = app.panes.iter().position(|p| p.kind() == PaneKind::Transcript) {
+                app.focus = idx;
+                app.maximized = MaximizedState::Full;
+            }
+        }
+        KeyCode::Char('c') => {
+            if let Some(idx) = app.panes.iter().position(|p| p.kind() == PaneKind::Plot) {
+                app.focus = idx;
+                app.maximized = MaximizedState::Full;
+            }
+        }
+        KeyCode::Char('d') => {
+            if let Some(idx) = app.panes.iter().position(|p| p.kind() == PaneKind::Diagram) {
                 app.focus = idx;
                 app.maximized = MaximizedState::Full;
             }

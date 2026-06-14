@@ -314,6 +314,38 @@ fn clean_editor_line(line: &str) -> String {
             .collect()
     }
 
+    pub fn physical_pos_of_focus(&self) -> Option<usize> {
+        let focus_kind = self.panes.get(self.focus)?.kind();
+        self.config.layout.positions.iter().enumerate().find_map(|(pos, kind_str)| {
+            let kind = match kind_str.as_str() {
+                "editor" => PaneKind::Editor,
+                "repl" => PaneKind::Repl,
+                "variables" => PaneKind::Variables,
+                "terminal" => PaneKind::Terminal,
+                "diagram" => PaneKind::Diagram,
+                "plot" => PaneKind::Plot,
+                _ => return None,
+            };
+            if kind == focus_kind { Some(pos) } else { None }
+        })
+    }
+
+    pub fn should_preserve_maximized(&self, target_physical_pos: usize) -> bool {
+        let current_pos = match self.physical_pos_of_focus() {
+            Some(pos) => pos,
+            None => return false,
+        };
+        if target_physical_pos == current_pos {
+            return true;
+        }
+        match self.maximized {
+            MaximizedState::None => true,
+            MaximizedState::Full => false,
+            MaximizedState::Vertical => target_physical_pos % 2 != current_pos % 2,
+            MaximizedState::Horizontal => target_physical_pos / 2 != current_pos / 2,
+        }
+    }
+
     pub fn pane_index_at_physical_pos(&self, pos: usize) -> Option<usize> {
         if pos >= self.config.layout.positions.len() {
             return None;

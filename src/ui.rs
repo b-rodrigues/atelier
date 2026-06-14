@@ -374,6 +374,8 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         Line::from(" v           Maximize/restore focused pane vertically"),
         Line::from(" h           Maximize/restore focused pane horizontally"),
         Line::from(" =           Restore all pane sizes"),
+        Line::from(" c           Focus Plot pane"),
+        Line::from(" d           Focus Diagram pane"),
         Line::from(" ?           Show this help"),
         Line::from(" Esc         Back to normal mode"),
         Line::from(" q           Quit"),
@@ -643,6 +645,10 @@ fn status_bar(app: &App) -> Paragraph<'static> {
                 line2_spans.push(Span::raw(" Max Horiz  "));
                 line2_spans.push(Span::styled("=", Style::default().fg(Color::Yellow)));
                 line2_spans.push(Span::raw(" Restore  "));
+                line2_spans.push(Span::styled("c", Style::default().fg(Color::Yellow)));
+                line2_spans.push(Span::raw(" Plot  "));
+                line2_spans.push(Span::styled("d", Style::default().fg(Color::Yellow)));
+                line2_spans.push(Span::raw(" Diagram  "));
                 line2_spans.push(Span::styled("Esc", Style::default().fg(Color::Yellow)));
                 line2_spans.push(Span::raw(" Normal  "));
                 line2_spans.push(Span::styled("q", Style::default().fg(Color::Yellow)));

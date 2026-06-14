@@ -278,9 +278,20 @@ fn main() -> Result<()> {
     );
     app.panes.push(Box::new(diagram));
 
-    let plots = PlotPane::new(
-        app.config.plots.watch_dir.clone().into(),
-    );
+    let plots_watch_dir = {
+        let raw = &app.config.plots.watch_dir;
+        let path = std::path::Path::new(raw);
+        if path.is_relative() {
+            if let Some(ref repo) = repo_path {
+                std::path::Path::new(repo).join(path)
+            } else {
+                path.to_path_buf()
+            }
+        } else {
+            path.to_path_buf()
+        }
+    };
+    let plots = PlotPane::new(plots_watch_dir);
     app.panes.push(Box::new(plots));
 
     let transcript = TranscriptPane::new();

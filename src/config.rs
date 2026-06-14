@@ -107,7 +107,7 @@ pub struct PlotConfig {
 impl Default for PlotConfig {
     fn default() -> Self {
         Self {
-            watch_dir: "/tmp/atelier-plots".into(),
+            watch_dir: "_atelier/plots".into(),
         }
     }
 }
