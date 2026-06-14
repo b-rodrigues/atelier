@@ -17,6 +17,7 @@ struct VarEntry {
 pub struct VarsPane {
     entries: Vec<VarEntry>,
     scroll: usize,
+    selected_index: usize,
     csv_path: PathBuf,
     last_modified: Option<SystemTime>,
 }
@@ -26,6 +27,7 @@ impl VarsPane {
         let mut pane = Self {
             entries: Vec::new(),
             scroll: 0,
+            selected_index: 0,
             csv_path,
             last_modified: None,
         };
@@ -64,6 +66,8 @@ impl VarsPane {
                 if Some(modified) != self.last_modified {
                     self.entries = Self::read_csv(&self.csv_path);
                     self.last_modified = Some(modified);
+                    self.selected_index = 0;
+                    self.scroll = 0;
                 }
             }
         } else {
@@ -92,15 +96,13 @@ impl Pane for VarsPane {
         "Variables"
     }
 
-    fn render(&mut self, f: &mut Frame, area: Rect, _focused: bool) {
+    fn render(&mut self, f: &mut Frame, area: Rect, focused: bool) {
         self.check_updates();
 
         let rows = area.height as usize;
         let cols = area.width as usize;
 
         let mut lines: Vec<Line> = Vec::new();
-
-
 
         let name_col = (cols as f32 * 0.25) as usize;
         let type_col = (cols as f32 * 0.2) as usize;
@@ -124,24 +126,60 @@ impl Pane for VarsPane {
         lines.push(header);
 
         let max_display = rows.saturating_sub(1);
+        if max_display == 0 { return; }
+
+        if self.selected_index >= self.entries.len() {
+            self.selected_index = self.entries.len().saturating_sub(1);
+        }
+
+        if self.selected_index < self.scroll {
+            self.scroll = self.selected_index;
+        }
+        if self.selected_index >= self.scroll + max_display {
+            self.scroll = self.selected_index.saturating_add(1).saturating_sub(max_display);
+        }
+
         let start = self.scroll.min(self.entries.len().saturating_sub(max_display));
         let end = (start + max_display).min(self.entries.len());
 
-        for entry in &self.entries[start..end] {
+        for (i, entry) in self.entries[start..end].iter().enumerate() {
+            let global_idx = start + i;
             let mut value = entry.value.clone();
             if value.len() > cols.saturating_sub(name_col + type_col + 3) {
                 value.truncate(cols.saturating_sub(name_col + type_col + 6));
                 value.push_str("...");
             }
 
-            let style = Self::style_for_type(&entry.var_type);
-            lines.push(Line::from(vec![
-                Span::raw(format!("{:width$}", entry.name, width = name_col)),
-                Span::raw(" "),
-                Span::raw(format!("{:width$}", entry.var_type, width = type_col)),
-                Span::raw(" "),
-                Span::styled(value, style),
-            ]));
+            let is_selected = focused && global_idx == self.selected_index;
+            let base_style = Self::style_for_type(&entry.var_type);
+
+            let name_span = if is_selected {
+                Span::styled(
+                    format!("{:width$}", entry.name, width = name_col),
+                    Style::default().fg(Color::Yellow).bg(Color::DarkGray),
+                )
+            } else {
+                Span::raw(format!("{:width$}", entry.name, width = name_col))
+            };
+
+            let type_span = if is_selected {
+                Span::styled(
+                    format!("{:width$}", entry.var_type, width = type_col),
+                    base_style.bg(Color::DarkGray),
+                )
+            } else {
+                Span::raw(format!("{:width$}", entry.var_type, width = type_col))
+            };
+
+            let value_span = if is_selected {
+                Span::styled(value, base_style.bg(Color::DarkGray))
+            } else {
+                Span::styled(value, base_style)
+            };
+
+            lines.push(Line::from(
+                vec![name_span, Span::raw(" "), type_span, Span::raw(" "), value_span],
+            ));
         }
 
         let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
@@ -149,10 +187,22 @@ impl Pane for VarsPane {
     }
 
     fn write_input(&mut self, bytes: &[u8]) {
-        if bytes == b"j" {
-            self.scroll = self.scroll.saturating_add(1);
-        } else if bytes == b"k" {
-            self.scroll = self.scroll.saturating_sub(1);
+        if bytes == b"j" || bytes == b"\x1b[B" {
+            if !self.entries.is_empty() {
+                self.selected_index = (self.selected_index + 1) % self.entries.len();
+            }
+        } else if bytes == b"k" || bytes == b"\x1b[A" {
+            if !self.entries.is_empty() {
+                self.selected_index = if self.selected_index == 0 {
+                    self.entries.len() - 1
+                } else {
+                    self.selected_index - 1
+                };
+            }
         }
+    }
+
+    fn explain_name(&self) -> Option<String> {
+        self.entries.get(self.selected_index).map(|e| e.name.clone())
     }
 }

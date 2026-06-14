@@ -245,6 +245,15 @@ fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             Ok(Action::None)
         }
         _ => {
+            if key.code == KeyCode::Enter {
+                if let Some(name) = app.focused_pane().and_then(|p| p.explain_name()) {
+                    let cmd = format!("explain({})\r", name);
+                    if let Some(idx) = app.panes.iter().position(|p| p.kind() == PaneKind::Repl) {
+                        app.panes[idx].write_input(cmd.as_bytes());
+                    }
+                    return Ok(Action::None);
+                }
+            }
             if let Some(pane) = app.focused_pane_mut() {
                 let bytes = key_event_to_bytes(key);
                 pane.write_input(&bytes);

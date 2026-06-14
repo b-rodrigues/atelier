@@ -57,6 +57,8 @@ pub trait Pane {
     fn save_artifact(&mut self) -> Option<String> {
         None
     }
+
+    fn explain_name(&self) -> Option<String> { None }
 }
 
 pub struct ErrorPane {
