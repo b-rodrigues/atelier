@@ -387,8 +387,12 @@ fn handle_navigation_key(app: &mut App, key: KeyEvent) -> Result<Action> {
         }
         KeyCode::Char('a') => {
             app.refresh_llm_context();
+            let preserve = app.should_preserve_maximized(3);
             if let Some(idx) = app.pane_index_at_physical_pos(3) {
                 app.focus = idx;
+            }
+            if !preserve {
+                app.maximized = MaximizedState::None;
             }
         }
         KeyCode::Char('p') => {

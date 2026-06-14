@@ -349,8 +349,8 @@ fn clean_editor_line(line: &str) -> String {
         match self.maximized {
             MaximizedState::None => true,
             MaximizedState::Full => false,
-            MaximizedState::Vertical => target_physical_pos % 2 != current_pos % 2,
-            MaximizedState::Horizontal => target_physical_pos / 2 != current_pos / 2,
+            MaximizedState::Vertical => true,
+            MaximizedState::Horizontal => true,
         }
     }
 
