@@ -216,6 +216,7 @@ fn main() -> Result<()> {
         repo_path.as_deref(),
     );
 
+    let _ = std::fs::remove_file(&app.vars_csv_path);
     let vars = pane::vars::VarsPane::new(app.vars_csv_path.clone());
 
     let plots_watch_dir = {
