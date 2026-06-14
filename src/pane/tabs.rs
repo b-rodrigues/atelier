@@ -179,4 +179,8 @@ impl Pane for TabContainer {
             false
         }
     }
+
+    fn explain_name(&self) -> Option<String> {
+        self.children.get(self.active).and_then(|c| c.explain_name())
+    }
 }
