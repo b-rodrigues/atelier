@@ -1,5 +1,6 @@
 use crate::context::AtelierContext;
 use crate::pane::{Pane, PaneKind};
+use ratatui_image::picker::ProtocolType;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -122,6 +123,12 @@ impl Pane for TabContainer {
     fn kill(&mut self) {
         for child in self.children.iter_mut() {
             child.kill();
+        }
+    }
+
+    fn set_protocol_type(&mut self, protocol_type: ProtocolType) {
+        for child in self.children.iter_mut() {
+            child.set_protocol_type(protocol_type);
         }
     }
 
