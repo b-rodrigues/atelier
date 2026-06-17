@@ -140,15 +140,25 @@ fn run(mut app: App) -> Result<Option<String>> {
     // Auto-detect terminal graphics protocol for images
     {
         use ratatui_image::picker::Picker;
-        if let Ok(picker) = Picker::from_query_stdio() {
-            let detected = picker.protocol_type();
-            let configured = app.config.plots.protocol.as_deref()
-                .or(app.config.diagram.protocol.as_deref())
-                .and_then(parse_protocol_type);
-            let protocol = configured.unwrap_or(detected);
-            for pane in app.panes.iter_mut() {
-                pane.set_protocol_type(protocol);
+        let mut detected_picker = Picker::from_query_stdio().ok();
+
+        // Apply config protocol override
+        let protocol_override = app.config.plots.protocol.as_deref()
+            .or(app.config.diagram.protocol.as_deref())
+            .and_then(parse_protocol_type);
+        if let Some(pt) = protocol_override {
+            match detected_picker {
+                Some(ref mut picker) => picker.set_protocol_type(pt),
+                None => {
+                    let mut fallback = Picker::halfblocks();
+                    fallback.set_protocol_type(pt);
+                    detected_picker = Some(fallback);
+                }
             }
+        }
+
+        for pane in app.panes.iter_mut() {
+            pane.set_image_backend(detected_picker.as_ref());
         }
     }
 

@@ -6,7 +6,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Paragraph, Wrap};
 use ratatui::Frame;
 use ratatui_image::{StatefulImage, Resize};
-use ratatui_image::picker::{Picker, ProtocolType};
+use ratatui_image::picker::Picker;
 use ratatui_image::protocol::StatefulProtocol;
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -148,8 +148,10 @@ impl Pane for DiagramPane {
         "Diagram"
     }
 
-    fn set_protocol_type(&mut self, protocol_type: ProtocolType) {
-        self.picker.set_protocol_type(protocol_type);
+    fn set_image_backend(&mut self, picker: Option<&Picker>) {
+        if let Some(p) = picker {
+            self.picker = p.clone();
+        }
         self.protocol = None;
     }
 
