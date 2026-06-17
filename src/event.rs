@@ -244,6 +244,18 @@ fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<Action> {
             }
             Ok(Action::None)
         }
+        (KeyCode::PageUp, _) => {
+            if let Some(pane) = app.focused_pane_mut() {
+                pane.scroll(3);
+            }
+            Ok(Action::None)
+        }
+        (KeyCode::PageDown, _) => {
+            if let Some(pane) = app.focused_pane_mut() {
+                pane.scroll(-3);
+            }
+            Ok(Action::None)
+        }
         _ => {
             if key.code == KeyCode::Enter {
                 if let Some(name) = app.focused_pane().and_then(|p| p.explain_name()) {

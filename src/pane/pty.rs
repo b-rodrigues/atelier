@@ -235,7 +235,7 @@ impl Pane for PtyPane {
     }
 
     fn scroll(&mut self, rows: i16) {
-        if self.parser.screen().alternate_screen() {
+        if self.kind == PaneKind::Editor && self.parser.screen().alternate_screen() {
             let seq = if rows > 0 { b"\x1b[5~" } else { b"\x1b[6~" };
             let abs = rows.unsigned_abs().max(1);
             for _ in 0..abs {

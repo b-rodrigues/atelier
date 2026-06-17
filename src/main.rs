@@ -130,7 +130,7 @@ fn parse_protocol_type(s: &str) -> Option<ratatui_image::picker::ProtocolType> {
 
 fn run(mut app: App) -> Result<Option<String>> {
     let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     terminal::enable_raw_mode()?;
 
     let backend = CrosstermBackend::new(stdout);
