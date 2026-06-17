@@ -28,6 +28,7 @@ pub trait Pane {
     fn write_input(&mut self, bytes: &[u8]);
     fn resize(&mut self, _cols: u16, _rows: u16) {}
     fn kill(&mut self) {}
+    fn set_protocol_type(&mut self, _protocol_type: ratatui_image::picker::ProtocolType) {}
     fn get_cursor_line(&self) -> Option<String> {
         None
     }

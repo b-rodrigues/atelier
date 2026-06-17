@@ -85,6 +85,8 @@ pub struct DiagramConfig {
     pub command: String,
     pub args: Vec<String>,
     pub watch_file: String,
+    #[serde(default)]
+    pub protocol: Option<String>,
 }
 
 impl Default for DiagramConfig {
@@ -94,6 +96,7 @@ impl Default for DiagramConfig {
             command: "dot".into(),
             args: vec!["-Tpng".into()],
             watch_file: "/tmp/atelier/pipeline.dot".into(),
+            protocol: None,
         }
     }
 }
@@ -102,12 +105,15 @@ impl Default for DiagramConfig {
 #[serde(default)]
 pub struct PlotConfig {
     pub watch_dir: String,
+    #[serde(default)]
+    pub protocol: Option<String>,
 }
 
 impl Default for PlotConfig {
     fn default() -> Self {
         Self {
             watch_dir: "_atelier/plots".into(),
+            protocol: None,
         }
     }
 }

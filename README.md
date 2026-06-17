@@ -85,8 +85,7 @@ When a **diagram** or **plot** pane is focused, the following keys are active:
 ## Pipeline Diagram
 
 The **diagram** pane watches a DOT file and renders it as a PNG via
-`dot -Tpng`. The diagram is displayed inline using ratatui-image with
-halfblock rendering — no external image viewer needed.
+`dot -Tpng`. The diagram is displayed inline using ratatui-image.
 
 Configure the DOT command and arguments (default: `dot -Tpng`):
 
@@ -99,6 +98,25 @@ dot_args = ["-Tpng"]
 T writes pipeline DOT descriptions to `/tmp/atelier/<pipeline_name>.dot`.
 The diagram pane picks up changes automatically (rate-limited to 300ms).
 
+### Graphics protocol
+
+By default, Atelier auto-detects the best graphics protocol your terminal
+supports:
+
+| Protocol     | Resolution                     | Terminals                             |
+|-------------|---------------------------------|---------------------------------------|
+| Kitty       | Native pixel resolution        | Kitty, WezTerm, Konsole               |
+| iTerm2      | Native pixel resolution        | iTerm2, WezTerm, mlterm               |
+| Sixel       | Native pixel resolution        | mlterm, foot, xterm (with support)    |
+| Halfblocks  | ~terminal cols × rows × 2 px   | All (fallback)                        |
+
+Override the auto-detection with an explicit protocol:
+
+```toml
+[diagram]
+protocol = "kitty"   # "kitty" | "iterm2" | "sixel" | "halfblocks"
+```
+
 ## Plot Viewer
 
 The **plot** pane scans a directory for PNG files and lets you browse them
@@ -107,12 +125,26 @@ with the arrow keys. Plots are rendered inline with ratatui-image.
 Configure the plot directory:
 
 ```toml
-[plot]
+[plots]
 directory = "/tmp/atelier-plots"
 ```
 
 The directory is scanned every 500ms for new or removed files, so new
 plots appear automatically.
+
+### Graphics protocol
+
+By default, Atelier auto-detects the best graphics protocol your terminal
+supports (Kitty → iTerm2 → Sixel → halfblocks fallback).  On terminals
+that support real graphics protocols (Kitty, WezTerm, Konsole, etc.),
+plots render at native pixel resolution instead of the halfblock grid.
+
+Override the auto-detection with an explicit protocol:
+
+```toml
+[plots]
+protocol = "kitty"   # "kitty" | "iterm2" | "sixel" | "halfblocks"
+```
 
 ## LLM Integration
 
@@ -178,9 +210,11 @@ leader = "alt-space"
 [diagram]
 dot_command = "dot"
 dot_args = ["-Tpng"]
+protocol = "kitty"     # optional — auto-detected if not set
 
-[plot]
+[plots]
 directory = "/tmp/atelier-plots"
+protocol = "kitty"     # optional — auto-detected if not set
 
 [llm]
 command = "opencode"

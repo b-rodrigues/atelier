@@ -117,6 +117,17 @@ fn first_launch_prompt() -> Result<Config> {
     Ok(config)
 }
 
+fn parse_protocol_type(s: &str) -> Option<ratatui_image::picker::ProtocolType> {
+    use ratatui_image::picker::ProtocolType;
+    match s.to_lowercase().as_str() {
+        "kitty" => Some(ProtocolType::Kitty),
+        "iterm2" => Some(ProtocolType::Iterm2),
+        "sixel" => Some(ProtocolType::Sixel),
+        "halfblocks" => Some(ProtocolType::Halfblocks),
+        _ => None,
+    }
+}
+
 fn run(mut app: App) -> Result<Option<String>> {
     let mut stdout = stdout();
     execute!(stdout, EnterAlternateScreen)?;
@@ -125,6 +136,21 @@ fn run(mut app: App) -> Result<Option<String>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
+
+    // Auto-detect terminal graphics protocol for images
+    {
+        use ratatui_image::picker::Picker;
+        if let Ok(picker) = Picker::from_query_stdio() {
+            let detected = picker.protocol_type();
+            let configured = app.config.plots.protocol.as_deref()
+                .or(app.config.diagram.protocol.as_deref())
+                .and_then(parse_protocol_type);
+            let protocol = configured.unwrap_or(detected);
+            for pane in app.panes.iter_mut() {
+                pane.set_protocol_type(protocol);
+            }
+        }
+    }
 
     while !app.should_quit {
         terminal.draw(|f| ui::render(f, &mut app))?;
